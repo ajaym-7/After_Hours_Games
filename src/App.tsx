@@ -414,6 +414,7 @@ function PlayScreen({ session, language, setLanguage, markSkipped, finishTurn }:
   return (
     <section className="game-layout">
       <div className="game-topline"><div><h1>{playerLabel(session, session.turn)}’s turn</h1></div><LanguageToggle language={language} setLanguage={setLanguage} /></div>
+      {session.pack.source === 'fallback' && <p className="fallback-notice" role="status">{language === 'en' ? session.pack.fallbackMessage?.en || 'Fresh cards could not load, so this session is using a ready-to-play backup deck.' : session.pack.fallbackMessage?.hi || 'Naye cards load nahi ho paaye, isliye yeh session ready-to-play backup deck use kar raha hai.'}</p>}
       <div className="progress-row"><div className="progress-track">{session.pack.cards.map((_, index) => <span key={index} className={index < session.turn ? 'complete' : index === session.turn ? 'current' : ''} />)}</div></div>
       <div className={`playing-card ${skipped ? 'penalty-card' : ''}`} key={`${session.turn}-${skipped ? 'penalty' : 'prompt'}`}>
         <div className="playing-card-edge" />

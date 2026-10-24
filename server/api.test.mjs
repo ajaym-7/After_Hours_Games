@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateSessionPack, validateGeneratedPack, validateSessionInput } from './api.mjs';
+import { EventEmitter } from 'node:events';
+import { buildFallbackSessionPack, generateSessionPack, handleGenerateRequest, validateGeneratedPack, validateSessionInput } from './api.mjs';
 
 const input = (overrides = {}) => ({
   audience: 'close-friends', spice: 'wild', drinkMode: 'no-drink', ceiling: 'suggestive', playerCount: 2, playerNames: [], ...overrides,
@@ -247,9 +248,79 @@ test('coalesces identical concurrent requests into one model generation', async 
   }
 });
 
-test('requires a server-side OpenRouter key when OpenRouter is selected', async () => {
-  await assert.rejects(
-    generateSessionPack(input(), { GENERATION_PROVIDER: 'openrouter' }),
-    (error) => error.statusCode === 503 && /OPENROUTER_API_KEY/.test(error.message),
-  );
+test('uses a complete matching backup deck when the model returns invalid JSON twice', async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response(JSON.stringify({ message: { content: 'not valid json' } }), { status: 200 });
+  };
+  try {
+    const settings = input({ playerCount: 4, turnsPerPlayer: 2, drinkMode: 'no-drink', spice: 'wild' });
+    const pack = await generateSessionPack(settings, { OLLAMA_BASE_URL: 'http://ollama.test:11434/' });
+    assert.equal(calls, 2);
+    assert.equal(pack.source, 'fallback');
+    assert.equal(pack.cards.length, 8);
+    assert.equal(pack.mode, 'no-drink');
+    assert.match(pack.fallbackMessage.en, /backup deck/i);
+    assert.doesNotThrow(() => validateGeneratedPack(pack, settings));
+    for (const entry of pack.cards) {
+      assert.doesNotMatch(`${entry.promptEn} ${entry.skipPenaltyEn} ${entry.promptHi} ${entry.skipPenaltyHi}`, /\b(drink|sip|alcohol|beer|wine|vodka|daaru|sharab|piyo|peeyo)\b/i);
+      if (entry.type === 'dare') assert.ok(entry.durationSeconds >= 45 && entry.durationSeconds <= 60);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('uses a Drink-aware fallback deck when the provider is unavailable or unconfigured', async () => {
+  const settings = input({ playerCount: 3, turnsPerPlayer: 2, drinkMode: 'drink', spice: 'spicy' });
+  const pack = await generateSessionPack(settings, { GENERATION_PROVIDER: 'openrouter' });
+  assert.equal(pack.source, 'fallback');
+  assert.equal(pack.cards.length, 6);
+  assert.ok(pack.cards.some((entry) => entry.type === 'drink' && /take a sip/i.test(entry.promptEn)));
+  assert.doesNotThrow(() => validateGeneratedPack(pack, settings));
+});
+
+test('can build a standalone fallback pack directly and keeps it unique at the maximum size', () => {
+  const settings = input({ playerCount: 12, turnsPerPlayer: 3, drinkMode: 'no-drink' });
+  const pack = buildFallbackSessionPack(settings);
+  assert.equal(pack.cards.length, 36);
+  assert.equal(new Set(pack.cards.map((entry) => entry.promptEn)).size, 36);
+  assert.doesNotThrow(() => validateGeneratedPack(pack, settings));
+});
+
+test('returns a playable backup pack when the session-generation rate limit is reached', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalLimit = process.env.SESSION_RATE_LIMIT_PER_HOUR;
+  process.env.SESSION_RATE_LIMIT_PER_HOUR = '1';
+  const settings = { ...input(), turnsPerPlayer: 1 };
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    message: { content: JSON.stringify({ cards: [card(), card({ type: 'story', promptEn: 'Tell a chaotic story.', promptHi: 'Ek chaotic story sunao.' })] }) }, done: true,
+  }), { status: 200 });
+  const makeRequest = async (address) => {
+    const request = new EventEmitter();
+    request.method = 'POST';
+    request.socket = { remoteAddress: address };
+    const result = await new Promise((resolve) => {
+      const response = { headers: {}, setHeader(key, value) { this.headers[key] = value; }, end(body) { resolve({ statusCode: this.statusCode, body: JSON.parse(body) }); } };
+      void handleGenerateRequest(request, response);
+      request.emit('data', Buffer.from(JSON.stringify(settings)));
+      request.emit('end');
+    });
+    return result;
+  };
+  try {
+    const first = await makeRequest('rate-limit-test-address');
+    const second = await makeRequest('rate-limit-test-address');
+    assert.equal(first.statusCode, 200);
+    assert.equal(second.statusCode, 200);
+    assert.equal(second.body.source, 'fallback');
+    assert.equal(second.body.cards.length, 2);
+    assert.doesNotThrow(() => validateGeneratedPack(second.body, settings));
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalLimit === undefined) delete process.env.SESSION_RATE_LIMIT_PER_HOUR;
+    else process.env.SESSION_RATE_LIMIT_PER_HOUR = originalLimit;
+  }
 });

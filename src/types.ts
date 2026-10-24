@@ -28,6 +28,8 @@ export interface SessionPack {
   cards: SessionCard[];
   generatedAt: string;
   mode: DrinkMode;
+  source?: 'generated' | 'fallback';
+  fallbackMessage?: { en: string; hi: string };
 }
 
 export interface SavedSession {

@@ -139,6 +139,7 @@ textarea::placeholder { color: #5d6159; }
 .session-language button { min-width: 34px; border: 0; border-radius: 5px; padding: 6px 8px; color: #85897f; background: transparent; font: 10px var(--mono); cursor: pointer; }
 .session-language button.active { color: #151710; background: var(--lime); }
 .progress-row { margin: 28px 0 17px; }
+.fallback-notice { margin: 12px 0 -8px; color: #b4baaa; font-size: 13px; line-height: 1.45; text-align: center; }
 .progress-label { display: flex; justify-content: space-between; color: #82867c; font-size: 9px; margin-bottom: 9px; }
 .progress-label span:first-child { color: var(--lime); }
 .progress-track { display: flex; gap: 5px; }

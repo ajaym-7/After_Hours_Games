@@ -66,23 +66,41 @@ function fallbackCard(input, index) {
     chill: [
       { type: 'story', en: 'Tell the group about a tiny plan that turned into a surprisingly chaotic story; a made-up version is welcome.', hi: 'Group ko ek chhote plan ki surprisingly chaotic story sunao; chaaho toh fictional version bana lo.' },
       { type: 'act', en: 'Give a 45-second movie-trailer voice-over for an ordinary mistake you made, building up to its ridiculous ending.', hi: 'Apni kisi ordinary mistake ka 45-second movie-trailer voice-over do aur uske ridiculous ending tak suspense banao.' },
+      { type: 'group-challenge', en: 'Recruit a willing co-star and act out a totally ordinary misunderstanding like it is a season finale for 45 seconds.', hi: 'Ek willing co-star ke saath bilkul ordinary misunderstanding ko 45 seconds tak season finale ki tarah act karo.' },
+      { type: 'confession', en: 'Name a harmless hill you would defend forever, then deliver a 45-second campaign speech to win the room.', hi: 'Ek harmless opinion batao jise tum hamesha defend karoge, phir room jeetne ke liye 45-second campaign speech do.' },
+      { type: 'story', en: 'Tell a 45-second story about the most dramatic reaction you have had to a very minor inconvenience; fiction counts.', hi: 'Kisi chhoti si inconvenience par apne sabse dramatic reaction ki 45-second story sunao; fiction bhi chalega.' },
+      { type: 'dare', en: 'For 45 seconds, narrate someone’s snack run like a high-stakes wildlife documentary; keep it kind.', hi: '45 seconds tak kisi ke snack lene jaane ko high-stakes wildlife documentary ki tarah narrate karo; kind rehna.' },
     ],
     spicy: [
       { type: 'confession', en: 'Confess the boldest harmless excuse you have used to dodge an awkward plan, or invent one and defend it like sworn testimony.', hi: 'Kisi awkward plan se bachne ke liye apna boldest harmless bahana confess karo—or fictional bahana bana ke sworn testimony jaisa defend karo.' },
       { type: 'story', en: 'Tell the story of a confident move that went sideways, ending at the exact moment you realized it; fictional stories count.', hi: 'Ek confident move ki story sunao jo ulta pad gaya, bilkul us moment par end karo jab tumhe samajh aaya; fictional stories bhi chalengi.' },
+      { type: 'confession', en: 'Reveal the most ridiculous thing you have done to look effortlessly cool, then rate the result out of ten.', hi: 'Effortlessly cool dikhne ke liye ki hui sabse ridiculous cheez batao, phir result ko ten mein rate karo.' },
+      { type: 'dare', en: 'Deliver a 45-second breakup speech to an everyday habit you are ready to quit; the group asks one question.', hi: 'Ek everyday habit ko 45-second breakup speech do jise tum chhodne wale ho; group ek question poochega.' },
+      { type: 'story', en: 'Tell a 45-second story about a message you almost sent, what stopped you, and the plot twist you imagined.', hi: 'Ek message ki 45-second story sunao jo tum almost bhej dete, kis cheez ne roka aur tumne kya plot twist socha.' },
+      { type: 'group-challenge', en: 'Choose a willing co-star and pitch a fake reality show starring the two of you; reveal its scandalous title.', hi: 'Ek willing co-star chuno aur tum dono ke saath fake reality show pitch karo; uska scandalous title reveal karo.' },
     ],
     wild: [
       { type: 'dare', en: 'Deliver a 45-second emergency press conference about a harmless mistake; stay in character through two questions.', hi: 'Ek harmless mistake par 45-second emergency press conference do; do questions tak character mein raho.' },
       { type: 'group-challenge', en: 'With a willing co-star, act out a scandalous misunderstanding as a 45-second silent movie; let the group guess the twist.', hi: 'Ek willing co-star ke saath scandalous misunderstanding ko 45-second silent movie mein act karo; group twist guess karega.' },
+      { type: 'confession', en: 'Confess your most chaotic harmless flex, then let the group cross-examine you for 45 seconds.', hi: 'Apna sabse chaotic harmless flex confess karo, phir group 45 seconds tak cross-examine karega.' },
+      { type: 'dare', en: 'Give a 60-second acceptance speech for an award you invented, including one fake scandal and a shocking thank-you.', hi: 'Apne banaye award ke liye 60-second acceptance speech do, ek fake scandal aur shocking thank-you ke saath.' },
+      { type: 'story', en: 'Tell a 45-second story about a lie of convenience that grew legs; invent the most dramatic ending.', hi: 'Ek convenient jhooth ki 45-second story sunao jo badhta gaya; sabse dramatic ending invent karo.' },
+      { type: 'group-challenge', en: 'Recruit two willing co-stars for a 60-second courtroom scene where the charge is being suspiciously confident.', hi: 'Do willing co-stars ke saath 60-second courtroom scene karo jahan charge hai suspiciously confident hona.' },
     ],
   };
   const choice = variants[input.spice][index % variants[input.spice].length];
+  const penalties = [
+    ['Give a 30-second courtroom defense of an absurd accusation.', 'Ek absurd accusation par 30-second courtroom defense do.'],
+    ['Perform a 30-second dramatic apology to an imaginary fan club.', 'Imaginary fan club ko 30-second dramatic apology do.'],
+    ['Narrate your next 30 seconds like a sports commentator.', 'Agale 30 seconds ko sports commentator ki tarah narrate karo.'],
+    ['Make a 30-second campaign speech for the group’s least serious award.', 'Group ke sabse unserious award ke liye 30-second campaign speech do.'],
+  ][index % 4];
   return {
     type: choice.type,
     promptEn: `${choice.en}${titleEn}`,
     promptHi: `${choice.hi}${titleHi}`,
-    skipPenaltyEn: 'Skip it and give a 30-second courtroom defense of an absurd accusation.',
-    skipPenaltyHi: 'Skip karke ek absurd accusation par 30-second courtroom defense do.',
+    skipPenaltyEn: penalties[0],
+    skipPenaltyHi: penalties[1],
     durationSeconds: choice.type === 'dare' ? 45 : 0,
   };
 }
@@ -272,12 +290,36 @@ export function generateSessionPack(rawInput, env = process.env) {
   const current = inFlightGenerations.get(key);
   if (current) return current;
 
-  const task = generateValidatedPack(input, env, provider, model);
+  const task = generateValidatedPack(input, env, provider, model).catch((error) => {
+    console.warn('[session-generation-fallback]', JSON.stringify({
+      provider, model, cardCount: input.playerCount * input.turnsPerPlayer,
+      statusCode: error.statusCode || null, reason: error.message || 'generation failed',
+    }));
+    return buildFallbackSessionPack(input);
+  });
   inFlightGenerations.set(key, task);
   void task.finally(() => {
     if (inFlightGenerations.get(key) === task) inFlightGenerations.delete(key);
   }).catch(() => {});
   return task;
+}
+
+export function buildFallbackSessionPack(rawInput) {
+  const input = validateSessionInput(rawInput);
+  const cardCount = input.playerCount * input.turnsPerPlayer;
+  const cards = Array.from({ length: cardCount }, (_, index) => fallbackCard(input, index));
+  const safeCards = guaranteeDrinkCard(cards, input);
+  validateGeneratedPack({ cards: safeCards }, input);
+  return {
+    cards: safeCards,
+    generatedAt: new Date().toISOString(),
+    mode: input.drinkMode,
+    source: 'fallback',
+    fallbackMessage: {
+      en: 'Fresh cards could not load, so this session is using a ready-to-play backup deck.',
+      hi: 'Naye cards load nahi ho paaye, isliye yeh session ready-to-play backup deck use kar raha hai.',
+    },
+  };
 }
 
 async function generateValidatedPack(input, env, provider, model) {
@@ -378,7 +420,7 @@ async function generateValidatedPack(input, env, provider, model) {
         ? { modelLoadMs: Math.round((payload.load_duration || 0) / 1e6), outputTokens: payload.eval_count || null }
         : { inputTokens: payload.usage?.prompt_tokens ?? null, outputTokens: payload.usage?.completion_tokens ?? null };
       console.info('[session-generation]', JSON.stringify({ provider, model, cardCount: cards.length, repairedCards: repaired.repairedCount, elapsedMs, ...stats }));
-      return { cards, generatedAt: new Date().toISOString(), mode: input.drinkMode };
+      return { cards, generatedAt: new Date().toISOString(), mode: input.drinkMode, source: 'generated' };
     } catch (error) {
       lastError = error;
       if (attempt === 0) {
@@ -403,22 +445,6 @@ export async function handleGenerateRequest(request, response) {
     response.end(JSON.stringify({ error: 'Use POST to generate a session.' }));
     return;
   }
-  const now = Date.now();
-  const address = request.socket?.remoteAddress || 'unknown';
-  const recent = (generationWindows.get(address) || []).filter((at) => now - at < 60 * 60 * 1000);
-  const limit = Math.max(1, Number(process.env.SESSION_RATE_LIMIT_PER_HOUR || 20));
-  if (recent.length >= limit) {
-    response.statusCode = 429;
-    response.end(JSON.stringify({ error: 'Too many new sessions from this connection. Try again later.' }));
-    return;
-  }
-  recent.push(now);
-  generationWindows.set(address, recent);
-  if (generationWindows.size > 1000) {
-    for (const [key, timestamps] of generationWindows) {
-      if (!timestamps.some((at) => now - at < 60 * 60 * 1000)) generationWindows.delete(key);
-    }
-  }
   let body = '';
   request.on('data', (chunk) => {
     body += chunk;
@@ -430,8 +456,25 @@ export async function handleGenerateRequest(request, response) {
   });
   request.on('end', async () => {
     try {
-      const input = JSON.parse(body || '{}');
-      const pack = await generateSessionPack(input);
+      const rawInput = JSON.parse(body || '{}');
+      const input = validateSessionInput(rawInput);
+      const now = Date.now();
+      const address = request.socket?.remoteAddress || 'unknown';
+      const recent = (generationWindows.get(address) || []).filter((at) => now - at < 60 * 60 * 1000);
+      const limit = Math.max(1, Number(process.env.SESSION_RATE_LIMIT_PER_HOUR || 20));
+      const rateLimited = recent.length >= limit;
+      if (rateLimited) {
+        console.info('[session-generation-fallback]', JSON.stringify({ reason: 'rate-limit', cardCount: input.playerCount * input.turnsPerPlayer }));
+      } else {
+        recent.push(now);
+        generationWindows.set(address, recent);
+      }
+      if (generationWindows.size > 1000) {
+        for (const [key, timestamps] of generationWindows) {
+          if (!timestamps.some((at) => now - at < 60 * 60 * 1000)) generationWindows.delete(key);
+        }
+      }
+      const pack = rateLimited ? buildFallbackSessionPack(input) : await generateSessionPack(input);
       response.statusCode = 200;
       response.end(JSON.stringify(pack));
     } catch (error) {
