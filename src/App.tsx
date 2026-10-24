@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Audience, Ceiling, DrinkMode, Language, SavedSession, SessionCard, SessionPack, SessionSettings, Spice } from './types';
 import Stepper, { Step } from './Stepper.jsx';
 import InfiniteMenu from './InfiniteMenu.jsx';
+import ConfirmDialog from './ConfirmDialog';
 import NeverHaveIEver from './NeverHaveIEver';
 import AdditionalGames, { type AdditionalGameId } from './AdditionalGames';
+import BackToGamesButton from './BackToGamesButton';
+import { playCelebration } from './sounds';
 
 const STORAGE_KEY = 'drunk-or-drama-session-v1';
 const AGE_KEY = 'drunk-or-drama-adult-confirmed';
@@ -27,10 +30,10 @@ const audiences: { id: Audience; title: string }[] = [
   { id: 'mixed-group', title: 'Mixed group' },
   { id: 'new-people', title: 'New people' },
 ];
-const spices: { id: Spice; title: string; description: string; icon: string }[] = [
-  { id: 'chill', title: 'Chill', description: 'Light and playful', icon: '✳' },
-  { id: 'spicy', title: 'Spicy', description: 'Bolder and personal', icon: '♨' },
-  { id: 'wild', title: 'Wild', description: 'Chaotic and daring', icon: '✦' },
+const spices: { id: Spice; title: string; description: string }[] = [
+  { id: 'chill', title: 'Chill', description: 'Light and playful' },
+  { id: 'spicy', title: 'Spicy', description: 'Bolder and personal' },
+  { id: 'wild', title: 'Wild', description: 'Chaotic and daring' },
 ];
 const typeCopy: Record<SessionCard['type'], { en: string; hi: string; icon: string }> = {
   confession: { en: 'Confession', hi: 'Confession', icon: '◉' },
@@ -92,7 +95,39 @@ function App() {
   const [generationError, setGenerationError] = useState('');
   const [selectedFavorite, setSelectedFavorite] = useState<number | null>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [confirmExit, setConfirmExit] = useState(false);
   const [selectedGame, setSelectedGame] = useState<'drunk-or-drama' | 'never-have-i-ever' | AdditionalGameId | null>(null);
+  const sessionRef = useRef(session);
+  const selectedGameRef = useRef(selectedGame);
+  const gameBackActionRef = useRef<(() => void) | null>(null);
+  sessionRef.current = session;
+  selectedGameRef.current = selectedGame;
+  const registerGameBackAction = useCallback((action: (() => void) | null) => {
+    gameBackActionRef.current = action;
+  }, []);
+
+  useEffect(() => {
+    window.history.replaceState({ app: 'after-hours', screen: 'home' }, '');
+    if (sessionRef.current) window.history.pushState({ app: 'after-hours', screen: 'game', game: 'drunk-or-drama' }, '');
+    const handlePopState = (event: PopStateEvent) => {
+      const backEvent = new Event('after-hours:browser-back', { cancelable: true });
+      window.dispatchEvent(backEvent);
+
+      const activeSession = sessionRef.current;
+      const currentGame = selectedGameRef.current;
+      if (backEvent.defaultPrevented || activeSession) {
+        if (activeSession) setConfirmExit(true);
+        const game = currentGame || (activeSession ? 'drunk-or-drama' : null);
+        if (game) window.history.pushState({ app: 'after-hours', screen: 'game', game }, '');
+        return;
+      }
+
+      const target = event.state as { app?: string; screen?: string; game?: GameSelection } | null;
+      setSelectedGame(target?.app === 'after-hours' && target.screen === 'game' ? target.game ?? null : null);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     if (session) writeStorage(STORAGE_KEY, JSON.stringify(session));
@@ -155,6 +190,7 @@ function App() {
 
   function revealFavorite() {
     if (!session || selectedFavorite === null) return;
+    playCelebration();
     setSession({ ...session, favoriteIndex: selectedFavorite, screen: 'result' });
   }
 
@@ -164,15 +200,29 @@ function App() {
     setSelectedGame(null);
     setGenerationError('');
     setSelectedFavorite(null);
+    window.history.replaceState({ app: 'after-hours', screen: 'home' }, '');
+  }
+
+  function openGame(game: GameSelection) {
+    window.history.pushState({ app: 'after-hours', screen: 'game', game }, '');
+    setSelectedGame(game);
   }
 
   function goToGameLibrary() {
     if (session) {
-      if (!window.confirm('Leave this game and return to the game list? Your current session will end.')) return;
-      newSession();
+      setConfirmExit(true);
       return;
     }
     setSelectedGame(null);
+    window.history.replaceState({ app: 'after-hours', screen: 'home' }, '');
+  }
+
+  function handleTopbarBack() {
+    if (session || selectedGame === 'drunk-or-drama') {
+      goToGameLibrary();
+      return;
+    }
+    gameBackActionRef.current?.();
   }
 
   function confirmAge() {
@@ -193,15 +243,20 @@ function App() {
 
   return (
     <main className={`app-shell ${themeClass}`}>
-      <header className="topbar">
-        {(session || selectedGame === 'drunk-or-drama') && <button className="back-games-button" onClick={goToGameLibrary}>← <span>Games</span></button>}
-        <button className="brand" aria-label="After Hours games" onClick={() => { if (!session) setSelectedGame(null); }} disabled={Boolean(session)}>
-          <span className="brand-name">AFTER<span>HOURS</span></span>
+      <header className={`topbar ${session || selectedGame !== null ? 'topbar-game' : ''}`}>
+        {(session || selectedGame !== null) ? <BackToGamesButton onClick={handleTopbarBack} /> : <span className="topbar-back-placeholder" aria-hidden="true" />}
+        <button className="brand" aria-label="After Hours games" onClick={handleTopbarBack} disabled={Boolean(session)}>
+          <span className="brand-name">After Hours</span>
         </button>
-        <button className="feedback-trigger" onClick={() => setFeedbackOpen(true)}>Feedback</button>
+        <div className="topbar-actions">
+          {(session || selectedGame !== null) && <button className="topbar-language" aria-label={`Language: ${language === 'en' ? 'English' : 'Hinglish'}. Switch language`} onClick={() => setSessionLanguage(language === 'en' ? 'hi' : 'en')}>
+            <svg className="topbar-language-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></svg>
+            <span className="topbar-button-label">{language === 'en' ? 'HINGLISH' : 'ENGLISH'}</span>
+          </button>}
+        </div>
       </header>
 
-      {!session && selectedGame === null && <GameLibrary onSelect={setSelectedGame} />}
+      {!session && selectedGame === null && <GameLibrary onSelect={openGame} />}
 
       {!session && selectedGame === 'drunk-or-drama' && <SetupScreen
         settings={settings} updateSetting={updateSetting} nameText={nameText} setNameText={setNameText}
@@ -209,18 +264,26 @@ function App() {
         generating={generating} startSession={startSession} language={language} setLanguage={setSessionLanguage}
       />}
 
-      {!session && selectedGame === 'never-have-i-ever' && <NeverHaveIEver onBack={() => setSelectedGame(null)} />}
-      {!session && selectedGame && selectedGame !== 'drunk-or-drama' && selectedGame !== 'never-have-i-ever' && <AdditionalGames game={selectedGame} onBack={() => setSelectedGame(null)} />}
+      {!session && selectedGame === 'never-have-i-ever' && <NeverHaveIEver onBack={goToGameLibrary} language={language} setLanguage={setSessionLanguage} registerBackAction={registerGameBackAction} />}
+      {!session && selectedGame && selectedGame !== 'drunk-or-drama' && selectedGame !== 'never-have-i-ever' && <AdditionalGames game={selectedGame} onBack={goToGameLibrary} language={language} setLanguage={setSessionLanguage} registerBackAction={registerGameBackAction} />}
 
       {session?.screen === 'playing' && <PlayScreen
-        session={session} language={language} setLanguage={setSessionLanguage} markSkipped={markSkipped} finishTurn={finishTurn}
+        session={session} language={language} markSkipped={markSkipped} finishTurn={finishTurn}
       />}
       {session?.screen === 'vote' && <VoteScreen
-        session={session} language={language} setLanguage={setSessionLanguage} selected={selectedFavorite}
+        session={session} language={language} selected={selectedFavorite}
         setSelected={setSelectedFavorite} onReveal={revealFavorite}
       />}
-      {session?.screen === 'result' && <ResultScreen session={session} language={language} setLanguage={setSessionLanguage} onAgain={newSession} />}
+      {session?.screen === 'result' && <ResultScreen session={session} language={language} onAgain={newSession} />}
       {feedbackOpen && <FeedbackDialog onClose={() => setFeedbackOpen(false)} />}
+      {confirmExit && <ConfirmDialog
+        title="Leave this game?"
+        message="Your current session will end and its progress will be lost."
+        confirmLabel="Leave game"
+        cancelLabel="Keep playing"
+        onCancel={() => setConfirmExit(false)}
+        onConfirm={() => { setConfirmExit(false); newSession(); }}
+      />}
     </main>
   );
 }
@@ -251,7 +314,6 @@ function GameLibrary({ onSelect }: { onSelect: (game: GameSelection) => void }) 
 
   return <section className="game-library-screen" aria-label="Choose a game">
     <div className="game-library-heading">
-      <p className="eyebrow">WELCOME TO AFTER HOURS</p>
       <h1>Pick your <em>game.</em></h1>
       <p>Choose a game for your group.</p>
     </div>
@@ -284,8 +346,8 @@ function GameLibrary({ onSelect }: { onSelect: (game: GameSelection) => void }) 
             <span className="game-menu-kicker">GAME {String(GAME_MENU_ITEMS.findIndex((entry) => entry.id === item.id) + 1).padStart(2, '0')} / 05</span>
             <h2>{item.title}</h2>
             <p>{item.description}</p>
+            <button className="game-menu-select" type="button" onClick={() => { dismissTutorial(); onSelect(item.id as GameSelection); }}>Play this game</button>
           </div>
-          <button className="game-menu-select" type="button" onClick={() => { dismissTutorial(); onSelect(item.id as GameSelection); }}>Select game <span>↗</span></button>
         </div>}
       />
     </div>
@@ -293,13 +355,21 @@ function GameLibrary({ onSelect }: { onSelect: (game: GameSelection) => void }) 
 }
 
 function AgeGate({ onConfirm }: { onConfirm: () => void }) {
+  const [declined, setDeclined] = useState(false);
+  const leave = () => {
+    window.close();
+    setDeclined(true);
+  };
+
   return (
     <main className="age-gate">
       <div className="age-card">
-        <div className="age-symbol">18<span>+</span></div>
-        <h1>Good stories<br />start with a <em>yes.</em></h1>
-        <p className="muted age-copy">For adults 18 and older.</p>
-        <button className="primary-button wide-button" onClick={onConfirm}>I’m 18 or older <span>↗</span></button>
+        <h1>{declined ? 'You can close this tab.' : 'Are you 18 or older?'}</h1>
+        <p className="muted age-copy">{declined ? 'This experience is only for adults 18 and older.' : 'This experience is for adults 18 and older.'}</p>
+        {!declined && <div className="age-actions">
+          <button className="primary-button" onClick={onConfirm}>Enter</button>
+          <button className="secondary-button" onClick={leave}>Leave</button>
+        </div>}
       </div>
     </main>
   );
@@ -367,7 +437,7 @@ function FeedbackDialog({ onClose }: { onClose: () => void }) {
           <p className="feedback-privacy">No name or email needed. Please leave out private details.</p>
           {error && <p className="feedback-error" role="alert">{error}</p>}
           <button className="primary-button wide-button" type="submit" disabled={sending || message.trim().length < 5}>
-            {sending ? 'Sending…' : 'Send feedback'} <span>↗</span>
+            {sending ? 'Sending…' : 'Send feedback'}
           </button>
         </form>
       </>}
@@ -394,7 +464,7 @@ function SetupScreen(props: SetupProps) {
     <section className="setup-layout" id="top">
       <div className="intro-column">
         <h1 className="hero-title">Drunk <span className="hero-or">or</span><br /><em>Drama?</em></h1>
-        <p className="hero-copy">Welcome to After Hours.</p>
+        <p className="hero-copy">After Hours</p>
       </div>
 
       <div className="setup-card">
@@ -449,7 +519,7 @@ function SetupScreen(props: SetupProps) {
             <div className="setup-step-content">
               <h2 className="settings-step-heading">Pick your energy</h2>
               <div className="choice-grid spice-grid">
-                {spices.map((item) => <button key={item.id} className={`choice-tile spice-tile ${settings.spice === item.id ? 'selected' : ''}`} onClick={() => updateSetting('spice', item.id)}><span className="spice-icon">{item.icon}</span><b>{item.title}</b><small>{item.description}</small></button>)}
+                {spices.map((item) => <button key={item.id} className={`choice-tile spice-tile ${settings.spice === item.id ? 'selected' : ''}`} onClick={() => updateSetting('spice', item.id)}><b>{item.title}</b><small>{item.description}</small></button>)}
               </div>
             </div>
           </Step>
@@ -491,16 +561,9 @@ function SetupScreen(props: SetupProps) {
     </section>
   );
 }
-type SessionProps = { session: SavedSession; language: Language; setLanguage: (language: Language) => void };
+type SessionProps = { session: SavedSession; language: Language };
 
-function LanguageToggle({ language, setLanguage }: { language: Language; setLanguage: (language: Language) => void }) {
-  return <div className="session-language" aria-label="Card language">
-    <button className={language === 'en' ? 'active' : ''} onClick={() => setLanguage('en')}>EN</button>
-    <button className={language === 'hi' ? 'active' : ''} onClick={() => setLanguage('hi')}>HINGLISH</button>
-  </div>;
-}
-
-function PlayScreen({ session, language, setLanguage, markSkipped, finishTurn }: SessionProps & { markSkipped: () => void; finishTurn: () => void }) {
+function PlayScreen({ session, language, markSkipped, finishTurn }: SessionProps & { markSkipped: () => void; finishTurn: () => void }) {
   const card = session.pack.cards[session.turn];
   const label = typeCopy[card.type];
   const prompt = language === 'en' ? card.promptEn : card.promptHi;
@@ -508,7 +571,7 @@ function PlayScreen({ session, language, setLanguage, markSkipped, finishTurn }:
   const skipped = session.skipped[session.turn];
   return (
     <section className="game-layout">
-      <div className="game-topline"><div><h1>{playerLabel(session, session.turn)}’s turn</h1></div><LanguageToggle language={language} setLanguage={setLanguage} /></div>
+      <div className="game-topline"><div><h1>{playerLabel(session, session.turn)}’s turn</h1></div></div>
       {session.pack.source === 'fallback' && <p className="fallback-notice" role="status">{language === 'en' ? session.pack.fallbackMessage?.en || 'Fresh cards could not load, so this session is using a ready-to-play backup deck.' : session.pack.fallbackMessage?.hi || 'Naye cards load nahi ho paaye, isliye yeh session ready-to-play backup deck use kar raha hai.'}</p>}
       <div className="progress-row"><div className="progress-track">{session.pack.cards.map((_, index) => <span key={index} className={index < session.turn ? 'complete' : index === session.turn ? 'current' : ''} />)}</div></div>
       <div className={`playing-card ${skipped ? 'penalty-card' : ''}`} key={`${session.turn}-${skipped ? 'penalty' : 'prompt'}`}>
@@ -528,18 +591,18 @@ function PlayScreen({ session, language, setLanguage, markSkipped, finishTurn }:
       </div>
       <div className="game-actions">
         {!skipped ? <>
-          <button className="secondary-button" onClick={markSkipped}>Skip this card <span>↗</span></button>
-          <button className="primary-button" onClick={finishTurn}>Done, pass it <span>→</span></button>
-        </> : <button className="primary-button continue-button" onClick={finishTurn}>Consequence done <span>→</span></button>}
+          <button className="secondary-button" onClick={markSkipped}>Skip this card</button>
+          <button className="primary-button" onClick={finishTurn}>Done, pass it</button>
+        </> : <button className="primary-button continue-button" onClick={finishTurn}>Consequence done</button>}
       </div>
     </section>
   );
 }
 
-function VoteScreen({ session, language, setLanguage, selected, setSelected, onReveal }: SessionProps & { selected: number | null; setSelected: (index: number) => void; onReveal: () => void }) {
+function VoteScreen({ session, language, selected, setSelected, onReveal }: SessionProps & { selected: number | null; setSelected: (index: number) => void; onReveal: () => void }) {
   return (
     <section className="vote-layout">
-      <div className="game-topline"><div><h1>Pick the moment</h1></div><LanguageToggle language={language} setLanguage={setLanguage} /></div>
+      <div className="game-topline"><div><h1>Pick the moment</h1></div></div>
       <p className="vote-instructions">Choose the moment the group will remember.</p>
       <div className="moment-grid">{session.pack.cards.map((card, index) => {
         const copy = typeCopy[card.type];
@@ -549,7 +612,7 @@ function VoteScreen({ session, language, setLanguage, selected, setSelected, onR
           <span className="moment-preview">{(language === 'en' ? card.promptEn : card.promptHi).slice(0, 94)}{(language === 'en' ? card.promptEn : card.promptHi).length > 94 ? '…' : ''}</span>
         </button>;
       })}</div>
-      <button className="primary-button reveal-button" disabled={selected === null} onClick={onReveal}>Reveal the Drama of the Night <span>↗</span></button>
+      <button className="primary-button reveal-button" disabled={selected === null} onClick={onReveal}>Reveal the Drama of the Night</button>
     </section>
   );
 }
@@ -573,16 +636,16 @@ function DareTimer({ seconds }: { seconds: number }) {
   </div>;
 }
 
-function ResultScreen({ session, language, setLanguage, onAgain }: SessionProps & { onAgain: () => void }) {
+function ResultScreen({ session, language, onAgain }: SessionProps & { onAgain: () => void }) {
   const winner = session.favoriteIndex ?? 0;
   const card = session.pack.cards[winner];
   return (
     <section className="result-layout">
       <div className="result-confetti" aria-hidden="true"><span>✦</span><span>✳</span><span>✦</span><span>✺</span><span>✦</span></div>
-      <div className="result-top"><span className="live-pill"><span className="live-dot" /> SESSION COMPLETE</span><LanguageToggle language={language} setLanguage={setLanguage} /></div>
+      <div className="result-top"><span className="live-pill"><span className="live-dot" /> SESSION COMPLETE</span></div>
       <h1>Drama of<br />the <em>Night.</em></h1>
       <div className="winner-card"><span className="winner-star">✦</span><strong>{playerLabel(session, winner)}</strong><p>{language === 'en' ? card.promptEn : card.promptHi}</p><span className="winner-type">{typeCopy[card.type].icon} &nbsp;{language === 'en' ? typeCopy[card.type].en : typeCopy[card.type].hi}</span></div>
-      <button className="primary-button replay-button" onClick={onAgain}>Make another memory <span>↗</span></button>
+      <button className="primary-button replay-button" onClick={onAgain}>Make another memory</button>
     </section>
   );
 }

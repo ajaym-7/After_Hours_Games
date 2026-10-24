@@ -419,7 +419,8 @@ const InfiniteMenu = ({
       const s = settingsRef.current;
       const aspect = state.width / state.height;
       const span = Math.tan(FOV / 2) * Math.min(1, aspect);
-      return RADIUS + tileRadius() / (0.46 * s.zoom * span);
+      const responsiveZoom = s.zoom * clamp(state.width / 560, 0.72, 1);
+      return RADIUS + tileRadius() / (0.46 * responsiveZoom * span);
     };
 
     const measure = () => {

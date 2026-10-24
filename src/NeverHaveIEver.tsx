@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Stepper, { Step } from './Stepper.jsx';
+import ConfirmDialog from './ConfirmDialog';
 import type { Audience, Ceiling, DrinkMode, Language, Spice } from './types';
+import { playCelebration } from './sounds';
 
 type Prompt = { en: string; hi: string; spice: Spice; explicit?: boolean; personal?: boolean; intimate?: boolean };
 type Settings = { audience: Audience; spice: Spice; ceiling: Ceiling; drinkMode: DrinkMode; language: Language; playerCount: number; turnsPerPlayer: number; names: string[] };
@@ -65,7 +67,12 @@ const eligiblePrompts = (settings: Settings) => prompts.filter((prompt) => spice
   && (settings.audience === 'close-friends' || (settings.audience === 'mixed-group' ? !prompt.intimate : !prompt.personal)));
 const countFor = (playerCount: number, turns: number) => playerCount * turns;
 
-export default function NeverHaveIEver({ onBack }: { onBack: () => void }) {
+export default function NeverHaveIEver({ onBack, language, setLanguage, registerBackAction }: {
+  onBack: () => void;
+  language: Language;
+  setLanguage: (language: Language) => void;
+  registerBackAction: (action: (() => void) | null) => void;
+}) {
   const [settings, setSettings] = useState<Settings>({ audience: 'close-friends', spice: 'wild', ceiling: 'suggestive', drinkMode: 'no-drink', language: 'en', playerCount: 5, turnsPerPlayer: 1, names: [] });
   const [stage, setStage] = useState<'setup' | 'play' | 'vote' | 'result'>('setup');
   const [step, setStep] = useState(1);
@@ -74,9 +81,24 @@ export default function NeverHaveIEver({ onBack }: { onBack: () => void }) {
   const [turn, setTurn] = useState(0);
   const [showPenalty, setShowPenalty] = useState(false);
   const [favorite, setFavorite] = useState<number | null>(null);
-  const [language, setLanguage] = useState<Language>('en');
+  const [confirmSetup, setConfirmSetup] = useState(false);
   const pool = useMemo(() => eligiblePrompts(settings), [settings]);
   const maxTurns = Math.max(1, Math.min(3, Math.floor(pool.length / settings.playerCount)));
+
+  useEffect(() => {
+    setSettings((old) => old.language === language ? old : { ...old, language });
+  }, [language]);
+
+  useEffect(() => {
+    const handleBrowserBack = (event: Event) => {
+      if (stage === 'setup') return;
+      event.preventDefault();
+      setConfirmSetup(true);
+    };
+    window.addEventListener('after-hours:browser-back', handleBrowserBack);
+    return () => window.removeEventListener('after-hours:browser-back', handleBrowserBack);
+  }, [stage]);
+
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) => setSettings((old) => {
     const next = { ...old, [key]: value };
     const availableTurns = Math.max(1, Math.min(3, Math.floor(eligiblePrompts(next).length / next.playerCount)));
@@ -89,6 +111,7 @@ export default function NeverHaveIEver({ onBack }: { onBack: () => void }) {
     setDeck(cards);
     setHits(Array(cards.length).fill(0));
     setTurn(0);
+    setStep(1);
     setShowPenalty(false);
     setFavorite(null);
     setLanguage(settings.language);
@@ -99,27 +122,55 @@ export default function NeverHaveIEver({ onBack }: { onBack: () => void }) {
     if (turn === deck.length - 1) setStage('vote');
     else { setTurn((old) => old + 1); setShowPenalty(false); }
   };
+  const revealFavorite = () => {
+    if (favorite === null) return;
+    playCelebration();
+    setStage('result');
+  };
+  const leaveGame = useCallback(() => {
+    if (stage === 'setup') {
+      onBack();
+      return;
+    }
+    setConfirmSetup(true);
+  }, [onBack, stage]);
+  useEffect(() => {
+    registerBackAction(leaveGame);
+    return () => registerBackAction(null);
+  }, [leaveGame, registerBackAction]);
+  const confirmLeaveGame = () => {
+    setConfirmSetup(false);
+    onBack();
+  };
   const changeHits = (amount: number) => setHits((old) => old.map((value, index) => index === turn ? Math.max(0, Math.min(settings.playerCount, value + amount)) : value));
   const text = (prompt: Prompt) => language === 'en' ? prompt.en : prompt.hi;
   const voteCandidates = deck.map((prompt, index) => ({ prompt, index })).sort((a, b) => hits[b.index] - hits[a.index]).slice(0, 6);
 
-  return <div className="nhie-shell">
-    <div className="nhie-top"><button className="nhie-back" onClick={stage === 'setup' ? onBack : () => setStage('setup')}>← {stage === 'setup' ? 'All games' : 'Setup'}</button><span className="nhie-brand">NEVER HAVE I EVER</span><button className="nhie-lang" onClick={() => setLanguage((old) => old === 'en' ? 'hi' : 'en')}>{language === 'en' ? 'HINGLISH' : 'ENGLISH'}</button></div>
+  return <>
+  <div className="nhie-shell">
     {stage === 'setup' && <section className="nhie-setup">
-      <div className="nhie-intro"><p className="eyebrow">AFTER HOURS · GAME 02</p><h1>Never have<br /><em>I ever.</em></h1><p>One statement. A room full of receipts.</p></div>
+      <div className="nhie-intro"><h1>Never have<br /><em>I ever.</em></h1><p>One statement. A room full of receipts.</p></div>
       <div className="setup-card nhie-setup-card"><Stepper step={step} initialStep={1} onStepChange={setStep} onFinalStepCompleted={start} indicator="bars" transition="slide" linear backButtonText="Back" nextButtonText="Continue" completeButtonText="Deal the cards" backButtonProps={{ className: 'setup-stepper-back' }} nextButtonProps={{ className: 'primary-button setup-stepper-next' }} theme="dark" accentColor="#83aaff" frame={false} radius={16} width="100%" className="settings-stepper">
         <Step title="Players"><div className="setup-step-content"><h2 className="settings-step-heading">Who’s playing?</h2><div className="player-count-row"><div><strong>{settings.playerCount}</strong><span>players</span></div><div className="player-count-controls"><button aria-label="Remove a player" disabled={settings.playerCount <= 2} onClick={() => changePlayers(Math.max(2, settings.playerCount - 1))}>−</button><button aria-label="Add a player" disabled={settings.playerCount >= 12} onClick={() => changePlayers(Math.min(12, settings.playerCount + 1))}>+</button></div></div><div className="player-name-grid">{Array.from({ length: settings.playerCount }, (_, index) => <label className="player-name-field" key={index}><span>Player {index + 1}</span><input maxLength={24} value={settings.names[index] || ''} placeholder="Enter name (optional)" onChange={(event) => update('names', Array.from({ length: settings.playerCount }, (_, slot) => slot === index ? event.target.value : settings.names[slot] || ''))} /></label>)}</div></div></Step>
         <Step title="Group"><div className="setup-step-content"><h2 className="settings-step-heading">Who’s in the room?</h2><p className="nhie-hint">{settings.audience === 'new-people' ? 'Keep it easy: passing is always fine, and made-up answers count.' : settings.audience === 'mixed-group' ? 'A mix of close and new friends; keep details optional.' : 'You know each other well. Share the story, or keep it mysterious.'}</p><div className="choice-grid audience-grid">{audiences().map(([id, title]) => <button key={id} className={`choice-tile ${settings.audience === id ? 'selected' : ''}`} onClick={() => update('audience', id)}><span className="choice-radio" /><b>{title}</b></button>)}</div></div></Step>
-        <Step title="Energy"><div className="setup-step-content"><h2 className="settings-step-heading">Pick your energy</h2><div className="choice-grid spice-grid">{([['chill', 'Chill', 'Light and playful'], ['spicy', 'Spicy', 'Bolder and personal'], ['wild', 'Wild', 'Chaotic and daring']] as [Spice, string, string][]).map(([id, title, description]) => <button key={id} className={`choice-tile spice-tile ${settings.spice === id ? 'selected' : ''}`} onClick={() => update('spice', id)}><span className="spice-icon">✦</span><b>{title}</b><small>{description}</small></button>)}</div></div></Step>
-        <Step title="Rules"><div className="setup-step-content rules-step"><h2 className="settings-step-heading">Set the rules</h2><Field label="Mode">{(['drink', 'no-drink'] as DrinkMode[]).map((value) => <button key={value} className={settings.drinkMode === value ? 'active' : ''} onClick={() => update('drinkMode', value)}>{value === 'drink' ? 'Drink' : 'No Drink'}</button>)}</Field><Field label="Content">{(['suggestive', 'explicit'] as Ceiling[]).map((value) => <button key={value} className={settings.ceiling === value ? 'active' : ''} onClick={() => update('ceiling', value)}>{value === 'suggestive' ? 'Suggestive' : 'Explicit'}</button>)}</Field><Field label="Turns per player">{[1, 2, 3].map((value) => <button key={value} className={settings.turnsPerPlayer === value ? 'active' : ''} disabled={value > maxTurns} onClick={() => update('turnsPerPlayer', value)}>{value}×</button>)}</Field><Field label="Language">{(['en', 'hi'] as Language[]).map((value) => <button key={value} className={settings.language === value ? 'active' : ''} onClick={() => update('language', value)}>{value === 'en' ? 'English' : 'Hinglish'}</button>)}</Field><p className="nhie-hint nhie-capacity">{pool.length} cards fit this vibe · up to {maxTurns} turn{maxTurns === 1 ? '' : 's'} per player</p></div></Step>
+        <Step title="Energy"><div className="setup-step-content"><h2 className="settings-step-heading">Pick your energy</h2><div className="choice-grid spice-grid">{([['chill', 'Chill', 'Light and playful'], ['spicy', 'Spicy', 'Bolder and personal'], ['wild', 'Wild', 'Chaotic and daring']] as [Spice, string, string][]).map(([id, title, description]) => <button key={id} className={`choice-tile spice-tile ${settings.spice === id ? 'selected' : ''}`} onClick={() => update('spice', id)}><b>{title}</b><small>{description}</small></button>)}</div></div></Step>
+        <Step title="Rules"><div className="setup-step-content rules-step"><h2 className="settings-step-heading">Set the rules</h2><Field label="Mode">{(['drink', 'no-drink'] as DrinkMode[]).map((value) => <button key={value} className={settings.drinkMode === value ? 'active' : ''} onClick={() => update('drinkMode', value)}>{value === 'drink' ? 'Drink' : 'No Drink'}</button>)}</Field><Field label="Content">{(['suggestive', 'explicit'] as Ceiling[]).map((value) => <button key={value} className={settings.ceiling === value ? 'active' : ''} onClick={() => update('ceiling', value)}>{value === 'suggestive' ? 'Suggestive' : 'Explicit'}</button>)}</Field><Field label="Turns per player">{[1, 2, 3].map((value) => <button key={value} className={settings.turnsPerPlayer === value ? 'active' : ''} disabled={value > maxTurns} onClick={() => update('turnsPerPlayer', value)}>{value}×</button>)}</Field><Field label="Language">{(['en', 'hi'] as Language[]).map((value) => <button key={value} className={settings.language === value ? 'active' : ''} onClick={() => { update('language', value); setLanguage(value); }}>{value === 'en' ? 'English' : 'Hinglish'}</button>)}</Field><p className="nhie-hint nhie-capacity">{pool.length} cards fit this vibe · up to {maxTurns} turn{maxTurns === 1 ? '' : 's'} per player</p></div></Step>
       </Stepper></div>
     </section>}
-    {stage === 'play' && deck[turn] && <section className="nhie-play"><div className="game-topline"><div><p className="eyebrow">{reader(turn)} READS THIS</p><h1>Never have I ever…</h1></div><LanguageToggle language={language} setLanguage={setLanguage} /></div><div className="progress-row"><div className="progress-track">{deck.map((_, index) => <span key={index} className={index < turn ? 'complete' : index === turn ? 'current' : ''} />)}</div></div><article className={`playing-card nhie-prompt-card ${showPenalty ? 'penalty-card' : ''}`} key={`${turn}-${showPenalty}`}><div className="playing-card-edge"/><div className="card-meta"><span className="type-pill">◉ &nbsp;{showPenalty ? 'SKIP FORFEIT' : 'STATEMENT'}</span><span className="card-count">{turn + 1} / {deck.length}</span></div><div className="card-center"><div className="card-spark">{showPenalty ? '↗' : '✳'}</div><h2>{showPenalty ? language === 'en' ? 'Give the group a 30-second dramatic defense of your most harmless hot take.' : 'Apne sabse harmless hot take ka 30-second dramatic defense group ko do.' : text(deck[turn])}</h2></div></article><div className="nhie-reveal"><p>{showPenalty ? 'Skip consequence · do this, then pass the phone.' : settings.drinkMode === 'drink' ? 'If this is you, take a sip. Sharing the story is optional.' : 'If this is you, raise a finger. Sharing the story is optional.'}</p>{!showPenalty && <div className="nhie-counter"><button aria-label="One fewer has done this" onClick={() => changeHits(-1)}>−</button><strong>{hits[turn]}</strong><span>of {settings.playerCount} have</span><button aria-label="One more has done this" onClick={() => changeHits(1)}>+</button></div>}</div><div className="game-actions">{!showPenalty && <button className="secondary-button" onClick={() => setShowPenalty(true)}>Skip statement <span>↗</span></button>}<button className={`primary-button ${showPenalty ? 'continue-button' : ''}`} onClick={finishPrompt}>{showPenalty ? 'Forfeit done' : turn === deck.length - 1 ? 'Choose the moment' : 'Next statement'} <span>→</span></button></div></section>}
-    {stage === 'vote' && <section className="nhie-vote"><p className="eyebrow">FINAL ROUND</p><h1>Which reveal<br />owned the room?</h1><div className="nhie-vote-grid">{voteCandidates.map(({ prompt, index }) => <button key={index} className={`moment-card ${favorite === index ? 'selected' : ''}`} onClick={() => setFavorite(index)}><span className="moment-number">CARD {String(index + 1).padStart(2, '0')}</span><strong>{reader(index)}</strong><span className="moment-preview">{text(prompt)}</span><span className="moment-type">{hits[index]} {hits[index] === 1 ? 'person had' : 'people had'} done it</span></button>)}</div><button className="primary-button" disabled={favorite === null} onClick={() => setStage('result')}>Reveal the night <span>↗</span></button></section>}
-    {stage === 'result' && favorite !== null && <section className="nhie-result"><span className="live-pill"><span className="live-dot"/> SESSION COMPLETE</span><p className="eyebrow">MOST RELATABLE MOMENT</p><h1>Never have<br /><em>I ever.</em></h1><article className="winner-card"><strong>{reader(favorite)}</strong><p>{text(deck[favorite])}</p><span className="winner-type">{hits[favorite]} {hits[favorite] === 1 ? 'person had' : 'people had'} done it</span></article><button className="primary-button wide-button" onClick={onBack}>Choose another game <span>↗</span></button><button className="nhie-replay" onClick={() => setStage('setup')}>Play again</button></section>}
-  </div>;
+    {stage === 'play' && deck[turn] && <section className="nhie-play"><div className="game-topline"><div><p className="eyebrow">{reader(turn)} READS THIS</p><h1>Never have I ever…</h1></div></div><div className="progress-row"><div className="progress-track">{deck.map((_, index) => <span key={index} className={index < turn ? 'complete' : index === turn ? 'current' : ''} />)}</div></div><article className={`playing-card nhie-prompt-card ${showPenalty ? 'penalty-card' : ''}`} key={`${turn}-${showPenalty}`}><div className="playing-card-edge"/><div className="card-meta"><span className="type-pill">◉ &nbsp;{showPenalty ? 'SKIP FORFEIT' : 'STATEMENT'}</span><span className="card-count">{turn + 1} / {deck.length}</span></div><div className="card-center"><div className="card-spark">{showPenalty ? '↗' : '✳'}</div><h2>{showPenalty ? language === 'en' ? 'Give the group a 30-second dramatic defense of your most harmless hot take.' : 'Apne sabse harmless hot take ka 30-second dramatic defense group ko do.' : text(deck[turn])}</h2></div></article><div className="nhie-reveal"><p>{showPenalty ? 'Skip consequence · do this, then pass the phone.' : settings.drinkMode === 'drink' ? 'If this is you, take a sip. Sharing the story is optional.' : 'If this is you, raise a finger. Sharing the story is optional.'}</p>{!showPenalty && <div className="nhie-counter"><button aria-label="One fewer has done this" onClick={() => changeHits(-1)}>−</button><strong>{hits[turn]}</strong><span>of {settings.playerCount} have</span><button aria-label="One more has done this" onClick={() => changeHits(1)}>+</button></div>}</div><div className="game-actions">{!showPenalty && <button className="secondary-button" onClick={() => setShowPenalty(true)}>Skip statement</button>}<button className={`primary-button ${showPenalty ? 'continue-button' : ''}`} onClick={finishPrompt}>{showPenalty ? 'Forfeit done' : turn === deck.length - 1 ? 'Choose the moment' : 'Next statement'}</button></div></section>}
+    {stage === 'vote' && <section className="nhie-vote"><p className="eyebrow">FINAL ROUND</p><h1>Which reveal<br />owned the room?</h1><div className="nhie-vote-grid">{voteCandidates.map(({ prompt, index }) => <button key={index} className={`moment-card ${favorite === index ? 'selected' : ''}`} onClick={() => setFavorite(index)}><span className="moment-number">CARD {String(index + 1).padStart(2, '0')}</span><strong>{reader(index)}</strong><span className="moment-preview">{text(prompt)}</span><span className="moment-type">{hits[index]} {hits[index] === 1 ? 'person had' : 'people had'} done it</span></button>)}</div><button className="primary-button" disabled={favorite === null} onClick={revealFavorite}>Reveal the night</button></section>}
+    {stage === 'result' && favorite !== null && <section className="nhie-result"><span className="live-pill"><span className="live-dot"/> SESSION COMPLETE</span><p className="eyebrow">MOST RELATABLE MOMENT</p><h1>Never have<br /><em>I ever.</em></h1><article className="winner-card"><strong>{reader(favorite)}</strong><p>{text(deck[favorite])}</p><span className="winner-type">{hits[favorite]} {hits[favorite] === 1 ? 'person had' : 'people had'} done it</span></article><button className="primary-button wide-button" onClick={onBack}>Choose another game</button><button className="nhie-replay" onClick={() => setStage('setup')}>Play again</button></section>}
+  </div>
+  {confirmSetup && <ConfirmDialog
+  title="Leave this game?"
+  message="Your current game progress will be lost."
+  confirmLabel="Return to all games"
+    cancelLabel="Keep playing"
+    onCancel={() => setConfirmSetup(false)}
+  onConfirm={confirmLeaveGame}
+  />}
+  </>;
 }
 
 function audiences(): [Audience, string][] { return [['close-friends', 'Close friends'], ['mixed-group', 'Mixed group'], ['new-people', 'New people']]; }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="field-block compact-field"><div className="field-heading"><label>{label}</label></div><div className="segmented-control">{children}</div></div>; }
-function LanguageToggle({ language, setLanguage }: { language: Language; setLanguage: (language: Language) => void }) { return <div className="session-language" aria-label="Card language"><button className={language === 'en' ? 'active' : ''} onClick={() => setLanguage('en')}>EN</button><button className={language === 'hi' ? 'active' : ''} onClick={() => setLanguage('hi')}>HINGLISH</button></div>; }
