@@ -20,6 +20,7 @@ export interface SessionSettings {
   drinkMode: DrinkMode;
   ceiling: Ceiling;
   playerCount: number;
+  turnsPerPlayer: number;
   playerNames: string[];
 }
 

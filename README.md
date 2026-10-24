@@ -18,6 +18,8 @@ The live session endpoint sends schema-constrained generation requests to either
 - `npm run build` type-checks and creates the production PWA in `dist/`.
 - `npm start` serves `dist/` and the generation endpoint. Run the build first.
 
+Feedback submitted in the app is appended to `data/feedback.ndjson` on the server. The form does not ask for a name or email.
+
 New sessions require the selected generation provider to be available. Ollama runs locally; OpenRouter requires an internet connection and API key. The app caches its shell and the active session locally, so an already-generated session can finish if the connection drops.
 
 ## Session rules
@@ -26,6 +28,6 @@ New sessions require the selected generation provider to be available. Ollama ru
 - Group presets: close friends, mixed group, new people.
 - Spice: chill, spicy, wild. The host chooses a suggestive or explicit ceiling.
 - Drink and No Drink are separate generation modes. No Drink cards and their skip penalties must contain no drinking language.
-- Names are optional; the group size is 2–12. Each player gets one card.
+- Names are optional; the group size is 2–12. Hosts can choose 1–3 turns per player.
 - Dares are 45–60 seconds. A skipped card reveals its own penalty.
 - The group chooses the favorite moment; there is no point tally.

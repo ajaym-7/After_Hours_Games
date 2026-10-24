@@ -2,7 +2,7 @@ import http from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { handleGenerateRequest } from './server/api.mjs';
+import { handleFeedbackRequest, handleGenerateRequest } from './server/api.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
@@ -15,6 +15,7 @@ const mime = {
 const server = http.createServer(async (request, response) => {
   const pathname = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`).pathname;
   if (pathname === '/api/generate-session') return handleGenerateRequest(request, response);
+  if (pathname === '/api/feedback') return handleFeedbackRequest(request, response);
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     response.writeHead(405).end('Method not allowed');
     return;
