@@ -172,8 +172,12 @@ function App() {
     return <AgeGate onConfirm={confirmAge} />;
   }
 
+  const themeClass = session || selectedGame === 'drunk-or-drama'
+    ? 'dod-theme'
+    : selectedGame === 'never-have-i-ever' ? 'nhie-theme' : 'home-theme';
+
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${themeClass}`}>
       <header className="topbar">
         <button className="brand" aria-label="After Hours games" onClick={() => { if (!session) setSelectedGame(null); }} disabled={Boolean(session)}>
           <span className="brand-name">AFTER<span>HOURS</span></span>
@@ -335,7 +339,7 @@ function SetupScreen(props: SetupProps) {
           backButtonProps={{ className: 'setup-stepper-back' }}
           nextButtonProps={{ className: 'primary-button setup-stepper-next', disabled: generating || (step === 1 && namesInvalid) }}
           theme="dark"
-          accentColor="#b9f26c"
+          accentColor="#c77b93"
           frame={false}
           radius={16}
           width="100%"

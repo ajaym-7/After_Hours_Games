@@ -536,3 +536,139 @@ textarea { font-size: 16px; line-height: 1.5; }
   .nhie-play .game-topline h1 { font-size: 29px; }
   .nhie-prompt-card { height: min(48vh, 390px); }
 }
+
+/* Never Have I Ever uses the same arcade treatment with a navy/blue palette. */
+.app-shell.nhie-theme {
+  --bg: #0b1120;
+  --panel: #111a2b;
+  --panel-2: #17243a;
+  --stroke: rgba(156, 185, 255, .16);
+  --muted: #97a7c3;
+  --cream: #eef3ff;
+  --lime: #83aaff;
+  --coral: #63d5ee;
+  --lavender: #b4a2ff;
+  background: var(--bg);
+  color: var(--cream);
+}
+body:has(.app-shell.nhie-theme) { background: #0b1120; }
+.app-shell.nhie-theme::before { opacity: .2; background-image: radial-gradient(rgba(130,166,255,.25) .65px, transparent .65px); }
+.nhie-theme .feedback-trigger { background: #111a2b; }
+.nhie-theme .feedback-trigger:hover { border-color: rgba(131,170,255,.55); color: var(--lime); }
+.nhie-theme .setup-card { background: rgba(17,26,43,.96); }
+.nhie-theme .player-count-row { background: #17233a; }
+.nhie-theme .player-count-controls button { background: #202e49; }
+.nhie-theme .choice-tile { background: #152038; }
+.nhie-theme .choice-tile:hover { border-color: rgba(131,170,255,.5); }
+.nhie-theme .choice-tile.selected { border-color: rgba(131,170,255,.75); background: rgba(131,170,255,.1); }
+.nhie-theme .selected .choice-radio { border-color: var(--lime); background: var(--lime); box-shadow: 0 0 8px rgba(131,170,255,.5); }
+.nhie-theme .live-pill { border-color: rgba(131,170,255,.25); background: rgba(131,170,255,.07); }
+.nhie-theme .live-dot { box-shadow: 0 0 12px rgba(131,170,255,.75); }
+.nhie-theme .segmented-control { background: #0c1321; }
+.nhie-theme .segmented-control button.active { color: #0d1421; }
+.nhie-theme .primary-button { border-color: var(--lime); background: var(--lime); color: #0d1421; }
+.nhie-theme .primary-button:hover:not(:disabled) { background: #a8c5ff; }
+.nhie-theme .playing-card { border-color: rgba(131,170,255,.38); background: radial-gradient(ellipse at 79% 15%, rgba(95,142,255,.16), transparent 45%), linear-gradient(135deg, #17233a, #111a2b 66%); }
+.nhie-theme .playing-card::after { border-color: rgba(131,170,255,.1); box-shadow: 0 0 0 30px rgba(131,170,255,.035), 0 0 0 60px rgba(131,170,255,.022); }
+.nhie-theme .progress-track span.complete { background: rgba(131,170,255,.58); }
+.nhie-theme .playing-card.penalty-card { border-color: rgba(99,213,238,.48); background: radial-gradient(ellipse at 79% 15%, rgba(99,213,238,.14), transparent 45%), linear-gradient(135deg, #152737, #111a2b 66%); }
+.nhie-theme .type-pill { background: rgba(131,170,255,.1); border-color: rgba(131,170,255,.24); }
+.nhie-theme .card-spark { text-shadow: 0 0 18px rgba(131,170,255,.45); }
+.nhie-theme .secondary-button { background: #141f33; }
+.nhie-theme .secondary-button:hover { border-color: rgba(99,213,238,.5); }
+.nhie-theme .moment-card { background: #141f33; }
+.nhie-theme .moment-card:hover { border-color: rgba(131,170,255,.45); }
+.nhie-theme .moment-card.selected { background: rgba(131,170,255,.1); }
+.nhie-theme .winner-card { background: linear-gradient(140deg, rgba(131,170,255,.13), rgba(180,162,255,.08)), #141f33; border-color: rgba(131,170,255,.3); }
+.nhie-theme .feedback-dialog { background: #111a2b; }
+.nhie-theme .feedback-close { background: #1a2942; }
+.nhie-theme .feedback-dialog select, .nhie-theme .feedback-dialog textarea, .nhie-theme .rating-options button { background: #0c1321; }
+
+/* The library and each game get their own accent palette; layout stays shared. */
+.app-shell.home-theme {
+  --bg: #111811;
+  --panel: #19221a;
+  --panel-2: #202b21;
+  --stroke: rgba(190, 222, 184, .15);
+  --muted: #a0b09c;
+  --cream: #eff3e9;
+  --lime: #a9d2a0;
+  --coral: #d6a487;
+  --lavender: #b8c4b2;
+  background: var(--bg);
+  color: var(--cream);
+}
+body:has(.app-shell.home-theme) { background: #111811; }
+.app-shell.home-theme::before { opacity: .2; background-image: radial-gradient(rgba(169,210,160,.24) .65px, transparent .65px); }
+.home-theme .feedback-trigger { background: #19221a; }
+.home-theme .feedback-trigger:hover { border-color: rgba(169,210,160,.55); color: var(--lime); }
+.home-theme .library-game-card { background: linear-gradient(145deg, #1b261d, #151e17); }
+.home-theme .library-game-card.featured { border-color: rgba(169,210,160,.38); }
+.home-theme .library-game-card:hover { border-color: rgba(169,210,160,.62); }
+.home-theme .library-index { color: var(--lime); }
+
+.app-shell.dod-theme {
+  --bg: #130d12;
+  --panel: #1b141a;
+  --panel-2: #261b23;
+  --stroke: rgba(229, 190, 205, .14);
+  --muted: #aa98a1;
+  --cream: #f3edf0;
+  --lime: #c77b93;
+  --coral: #f0947f;
+  --lavender: #baa5c9;
+  background: var(--bg);
+  color: var(--cream);
+}
+body:has(.app-shell.dod-theme) { background: #130d12; }
+.app-shell.dod-theme::before { opacity: .19; background-image: radial-gradient(rgba(199,123,147,.22) .65px, transparent .65px); }
+.dod-theme .feedback-trigger { background: #1b141a; }
+.dod-theme .feedback-trigger:hover { border-color: rgba(199,123,147,.55); color: var(--lime); }
+.dod-theme .setup-card { background: rgba(27,20,26,.96); }
+.dod-theme .player-count-row { background: #261b23; }
+.dod-theme .player-count-controls button { background: #30232c; }
+.dod-theme .choice-tile { background: #211820; }
+.dod-theme .choice-tile:hover { border-color: rgba(199,123,147,.48); }
+.dod-theme .choice-tile.selected { border-color: rgba(199,123,147,.72); background: rgba(199,123,147,.1); }
+.dod-theme .selected .choice-radio { border-color: var(--lime); background: var(--lime); box-shadow: 0 0 8px rgba(199,123,147,.5); }
+.dod-theme .live-pill { border-color: rgba(199,123,147,.25); background: rgba(199,123,147,.07); }
+.dod-theme .live-dot { box-shadow: 0 0 12px rgba(199,123,147,.72); }
+.dod-theme .segmented-control { background: #140f13; }
+.dod-theme .segmented-control button.active { color: #1b1117; }
+.dod-theme .primary-button { border-color: var(--lime); background: var(--lime); color: #1b1117; }
+.dod-theme .primary-button:hover:not(:disabled) { background: #dda0b2; }
+.dod-theme .playing-card { border-color: rgba(199,123,147,.38); background: radial-gradient(ellipse at 79% 15%, rgba(173,73,105,.17), transparent 45%), linear-gradient(135deg, #281923, #181319 66%); }
+.dod-theme .playing-card::after { border-color: rgba(199,123,147,.1); box-shadow: 0 0 0 30px rgba(199,123,147,.035), 0 0 0 60px rgba(199,123,147,.022); }
+.dod-theme .progress-track span.complete { background: rgba(199,123,147,.58); }
+.dod-theme .playing-card.penalty-card { border-color: rgba(240,148,127,.48); background: radial-gradient(ellipse at 79% 15%, rgba(240,148,127,.13), transparent 45%), linear-gradient(135deg, #2b1d23, #181319 66%); }
+.dod-theme .type-pill { background: rgba(199,123,147,.1); border-color: rgba(199,123,147,.24); }
+.dod-theme .card-spark { text-shadow: 0 0 18px rgba(199,123,147,.45); }
+.dod-theme .secondary-button { background: #20171e; }
+.dod-theme .secondary-button:hover { border-color: rgba(240,148,127,.5); }
+.dod-theme .moment-card { background: #1d161c; }
+.dod-theme .moment-card:hover { border-color: rgba(199,123,147,.44); }
+.dod-theme .moment-card.selected { background: rgba(199,123,147,.1); }
+.dod-theme .winner-card { background: linear-gradient(140deg, rgba(199,123,147,.13), rgba(186,165,201,.07)), #1d161c; border-color: rgba(199,123,147,.3); }
+.dod-theme .feedback-dialog { background: #1b141a; }
+.dod-theme .feedback-close { background: #30232c; }
+.dod-theme .feedback-dialog select, .dod-theme .feedback-dialog textarea, .dod-theme .rating-options button { background: #140f13; }
+
+/* Reserved palette for the upcoming Bollywood Dumb Charades screen. */
+.app-shell.bollywood-theme {
+  --bg: #17100d;
+  --panel: #211612;
+  --panel-2: #2b1b16;
+  --stroke: rgba(255, 190, 148, .16);
+  --muted: #b5a096;
+  --cream: #fff0e5;
+  --lime: #ff9a52;
+  --coral: #ff5b55;
+  --lavender: #e8a0a0;
+  background: var(--bg);
+  color: var(--cream);
+}
+.app-shell.bollywood-theme::before { opacity: .2; background-image: radial-gradient(rgba(255,154,82,.22) .65px, transparent .65px); }
+.bollywood-theme .playing-card { border-color: rgba(255,154,82,.38); background: radial-gradient(ellipse at 79% 15%, rgba(255,91,85,.16), transparent 45%), linear-gradient(135deg, #2b1b16, #1b1310 66%); }
+.bollywood-theme .playing-card::after { border-color: rgba(255,154,82,.1); box-shadow: 0 0 0 30px rgba(255,154,82,.035), 0 0 0 60px rgba(255,154,82,.022); }
+.bollywood-theme .type-pill { background: rgba(255,154,82,.1); border-color: rgba(255,154,82,.24); }
+.bollywood-theme .primary-button:hover:not(:disabled) { background: #ffb27b; }
