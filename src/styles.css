@@ -3,10 +3,10 @@
 :root {
   font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   color: #f1efe8;
-  background: #10110f;
+  background: #000;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --bg: #10110f;
+  --bg: #000;
   --panel: #171916;
   --panel-2: #1c1e1a;
   --stroke: rgba(239, 239, 226, .11);
@@ -20,14 +20,14 @@
 }
 
 * { box-sizing: border-box; }
-html { min-width: 320px; min-height: 100%; background: var(--bg); }
-body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--bg); }
+html { min-width: 320px; min-height: 100%; background: #000; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: #000; }
 button, input, textarea { font: inherit; }
 button { color: inherit; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
 ::selection { background: var(--lime); color: #111; }
 
-.app-shell { min-height: 100vh; max-width: 1600px; margin: 0 auto; padding: 0 7.1vw 20px; overflow: hidden; position: relative; }
+.app-shell { min-height: 100vh; max-width: 1600px; margin: 0 auto; padding: 0 7.1vw 20px; overflow: hidden; position: relative; background: #000; }
 .app-shell::before { content: ''; position: fixed; pointer-events: none; inset: 0; z-index: 0; opacity: .17; background-image: radial-gradient(rgba(239,239,226,.24) .65px, transparent .65px); background-size: 8px 8px; mask-image: linear-gradient(90deg, transparent, #000 20%, #000 80%, transparent); }
 .topbar { height: 76px; border-bottom: 1px solid var(--stroke); display: flex; align-items: center; justify-content: center; position: relative; z-index: 2; }
 .brand { display: inline-flex; gap: 11px; align-items: center; color: inherit; text-decoration: none; }
@@ -122,7 +122,7 @@ textarea::placeholder { color: #5d6159; }
 .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(22,25,17,.25); border-top-color: #161911; border-radius: 50%; animation: spin .8s linear infinite; }
 .site-footer { position: relative; z-index: 1; height: 40px; border-top: 1px solid var(--stroke); display: flex; justify-content: space-between; align-items: center; color: #5d6159; font-size: 8px; letter-spacing: .12em; }
 
-.age-gate { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(ellipse at 50% 42%, rgba(185,242,108,.09), transparent 36%), var(--bg); }
+.age-gate { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #000; }
 .age-card { width: min(100%, 420px); padding: 44px 38px; text-align: center; border: 1px solid var(--stroke); border-radius: 18px; background: rgba(23,25,22,.92); box-shadow: 0 25px 80px rgba(0,0,0,.3); }
 .age-symbol { width: 68px; height: 68px; margin: 0 auto 27px; display: grid; place-items: center; color: #151710; background: var(--lime); border-radius: 20px; font: 700 25px var(--display); transform: rotate(-6deg); }
 .age-symbol span { font-size: 13px; align-self: center; margin-left: -14px; margin-top: -18px; }
@@ -471,8 +471,8 @@ textarea { font-size: 16px; line-height: 1.5; }
 .library-intro h1, .nhie-intro h1 { margin: 15px 0 20px; font: 700 clamp(56px, 7vw, 92px)/.88 var(--display); letter-spacing: -.075em; }
 .library-intro h1 em, .nhie-intro h1 em, .nhie-result h1 em { color: var(--lime); font-style: normal; }
 .library-intro > p:last-child, .nhie-intro > p:last-child { color: #a3a79c; font-size: 16px; }
-.library-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch; }
-.library-game-card { min-height: 315px; padding: 25px; border: 1px solid var(--stroke); border-radius: 16px; background: linear-gradient(145deg, #1b1e19, #151714); color: var(--text); text-align: left; cursor: pointer; transition: transform .2s ease, border-color .2s ease; }
+.library-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.library-game-card { min-height: 245px; padding: 22px; border: 1px solid var(--stroke); border-radius: 16px; background: linear-gradient(145deg, #141414, #080808); color: var(--text); text-align: left; cursor: pointer; transition: transform .2s ease, border-color .2s ease; }
 .library-game-card:hover { transform: translateY(-5px); border-color: rgba(185,242,108,.48); }
 .library-game-card h2 { margin: 32px 0 12px; font: 700 clamp(31px, 3vw, 44px)/.95 var(--display); letter-spacing: -.06em; }
 .library-game-card h2 i { color: var(--coral); font-size: .65em; font-style: normal; }
@@ -518,7 +518,7 @@ textarea { font-size: 16px; line-height: 1.5; }
   .library-layout, .nhie-setup { width: min(100% - 32px, 560px); min-height: auto; padding: 38px 0 28px; grid-template-columns: 1fr; gap: 24px; }
   .library-intro h1, .nhie-intro h1 { font-size: clamp(51px, 15vw, 72px); }
   .library-grid { grid-template-columns: 1fr 1fr; gap: 9px; }
-  .library-game-card { min-height: 270px; padding: 18px; }
+  .library-game-card { min-height: 230px; padding: 18px; }
   .library-game-card h2 { font-size: clamp(27px, 7vw, 38px); }
   .library-game-card p { font-size: 12px; }
   .nhie-shell { width: min(100% - 32px, 560px); }
@@ -539,7 +539,7 @@ textarea { font-size: 16px; line-height: 1.5; }
 
 /* Never Have I Ever uses the same arcade treatment with a navy/blue palette. */
 .app-shell.nhie-theme {
-  --bg: #0b1120;
+  --bg: #000;
   --panel: #111a2b;
   --panel-2: #17243a;
   --stroke: rgba(156, 185, 255, .16);
@@ -548,10 +548,10 @@ textarea { font-size: 16px; line-height: 1.5; }
   --lime: #83aaff;
   --coral: #63d5ee;
   --lavender: #b4a2ff;
-  background: var(--bg);
+  background: #000;
   color: var(--cream);
 }
-body:has(.app-shell.nhie-theme) { background: #0b1120; }
+body:has(.app-shell.nhie-theme) { background: #000; }
 .app-shell.nhie-theme::before { opacity: .2; background-image: radial-gradient(rgba(130,166,255,.25) .65px, transparent .65px); }
 .nhie-theme .feedback-trigger { background: #111a2b; }
 .nhie-theme .feedback-trigger:hover { border-color: rgba(131,170,255,.55); color: var(--lime); }
@@ -584,9 +584,75 @@ body:has(.app-shell.nhie-theme) { background: #0b1120; }
 .nhie-theme .feedback-close { background: #1a2942; }
 .nhie-theme .feedback-dialog select, .nhie-theme .feedback-dialog textarea, .nhie-theme .rating-options button { background: #0c1321; }
 
+.app-shell.truth-dare-theme {
+  --bg: #000; --panel: #211a12; --panel-2: #2a2117; --stroke: rgba(241,194,119,.16);
+  --muted: #b4a38d; --cream: #f5efe6; --lime: #edbd6c; --coral: #ed8d67; --lavender: #d6b8d0;
+  background: #000; color: var(--cream);
+}
+body:has(.app-shell.truth-dare-theme) { background: #000; }
+.truth-dare-theme .setup-card { background: #17130f; }
+.truth-dare-theme .playing-card { border-color: rgba(237,189,108,.36); background: radial-gradient(ellipse at 79% 15%, rgba(237,141,103,.14), transparent 45%), linear-gradient(135deg, #241c13, #111 66%); }
+.truth-dare-theme .playing-card::after { border-color: rgba(237,189,108,.09); box-shadow: 0 0 0 30px rgba(237,189,108,.03), 0 0 0 60px rgba(237,189,108,.02); }
+.truth-dare-theme .type-pill { background: rgba(237,189,108,.1); border-color: rgba(237,189,108,.22); }
+
+.app-shell.most-likely-theme {
+  --bg: #000; --panel: #1b1722; --panel-2: #262033; --stroke: rgba(190,171,241,.16);
+  --muted: #a69bb7; --cream: #f1edf7; --lime: #b7a1ee; --coral: #ed8fbd; --lavender: #c5b6ee;
+  background: #000; color: var(--cream);
+}
+body:has(.app-shell.most-likely-theme) { background: #000; }
+.most-likely-theme .setup-card { background: #15121a; }
+.most-likely-theme .playing-card { border-color: rgba(183,161,238,.36); background: radial-gradient(ellipse at 79% 15%, rgba(237,143,189,.14), transparent 45%), linear-gradient(135deg, #211b2c, #111 66%); }
+.most-likely-theme .playing-card::after { border-color: rgba(183,161,238,.09); box-shadow: 0 0 0 30px rgba(183,161,238,.03), 0 0 0 60px rgba(183,161,238,.02); }
+.most-likely-theme .type-pill { background: rgba(183,161,238,.1); border-color: rgba(183,161,238,.22); }
+
+.back-games-button { position: absolute; left: 0; top: 50%; transform: translateY(-50%); border: 1px solid var(--stroke); border-radius: 8px; padding: 9px 12px; background: #0b0b0b; color: #d6d6d6; font-size: 14px; cursor: pointer; }
+.back-games-button:hover { border-color: var(--lime); color: var(--lime); }
+.library-game-card--wine { border-color: rgba(199,123,147,.36); }
+.library-game-card--wine .library-index, .library-game-card--wine .library-action { color: #d18aa0; }
+.library-game-card--blue { border-color: rgba(131,170,255,.34); }
+.library-game-card--blue .library-index, .library-game-card--blue .library-action { color: #83aaff; }
+.library-game-card--bollywood { border-color: rgba(255,154,82,.36); }
+.library-game-card--bollywood .library-index, .library-game-card--bollywood .library-action { color: #ff9a52; }
+.library-game-card--violet { border-color: rgba(183,161,238,.35); }
+.library-game-card--violet .library-index, .library-game-card--violet .library-action { color: #b7a1ee; }
+.library-game-card--amber { border-color: rgba(237,189,108,.35); }
+.library-game-card--amber .library-index, .library-game-card--amber .library-action { color: #edbd6c; }
+
+.additional-game { position: relative; z-index: 1; width: min(100%, 1180px); min-height: calc(100vh - 76px); margin: 0 auto; }
+.additional-topbar { height: 48px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; border-bottom: 1px solid var(--stroke); }
+.additional-topbar > span { color: var(--cream); font: 700 10px var(--mono); letter-spacing: .13em; }
+.additional-back, .additional-language { border: 0; padding: 8px 10px; background: transparent; color: var(--lime); cursor: pointer; font: 11px var(--mono); }
+.additional-language { justify-self: end; }
+.additional-setup { min-height: calc(100vh - 124px); display: grid; grid-template-columns: .8fr 1.2fr; align-items: center; gap: clamp(40px, 7vw, 100px); }
+.additional-intro h1 { margin: 16px 0; font: 700 clamp(52px, 7vw, 84px)/.9 var(--display); letter-spacing: -.075em; }
+.additional-intro h1 em { color: var(--lime); font-style: normal; }
+.additional-intro > p:last-child { max-width: 350px; color: #aaa; font-size: 15px; line-height: 1.6; }
+.additional-setup-card { width: 100%; background: #101010; }
+.additional-capacity { grid-column: 1 / -1; margin: 14px 0 0; color: #929292; font-size: 12px; }
+.additional-play { width: min(100%, 720px); min-height: calc(100vh - 124px); margin: 0 auto; padding: 24px 0 28px; display: flex; flex-direction: column; justify-content: center; }
+.additional-play .game-topline h1 { margin: 0; font: 600 clamp(31px, 5vw, 45px)/1 var(--display); letter-spacing: -.06em; }
+.additional-card { height: clamp(360px, 48vh, 470px); min-height: 0; }
+.additional-subcopy { margin: 0 0 14px; color: #a4a4a4; font-size: 13px; line-height: 1.45; }
+.charades-time { font: 700 clamp(58px, 11vw, 100px)/1 var(--display) !important; color: var(--lime); }
+.additional-choose, .additional-play-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.additional-choose button { width: 100%; }
+.additional-wide { grid-column: 1/-1; width: 100%; }
+.additional-vote-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+.additional-vote-list button { width: 100%; min-height: 48px; }
+.additional-result { width: min(100%, 540px); min-height: calc(100vh - 124px); margin: auto; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 15px; text-align: center; }
+.additional-result h1 { margin: 0 0 12px; font: 700 clamp(48px, 7vw, 76px)/.92 var(--display); letter-spacing: -.07em; }
+.additional-result .winner-card, .additional-result .primary-button, .additional-result .secondary-button { width: 100%; }
+@media (max-width: 760px) {
+  .library-layout, .additional-setup { width: min(100% - 32px, 560px); min-height: auto; padding: 38px 0 28px; grid-template-columns: 1fr; gap: 24px; }
+  .additional-game { width: min(100% - 32px, 560px); }
+  .additional-play { min-height: calc(100dvh - 112px); padding: 20px 0; }
+  .additional-vote-list { grid-template-columns: repeat(2, 1fr); }
+}
+
 /* The library and each game get their own accent palette; layout stays shared. */
 .app-shell.home-theme {
-  --bg: #111811;
+  --bg: #000;
   --panel: #19221a;
   --panel-2: #202b21;
   --stroke: rgba(190, 222, 184, .15);
@@ -595,10 +661,10 @@ body:has(.app-shell.nhie-theme) { background: #0b1120; }
   --lime: #a9d2a0;
   --coral: #d6a487;
   --lavender: #b8c4b2;
-  background: var(--bg);
+  background: #000;
   color: var(--cream);
 }
-body:has(.app-shell.home-theme) { background: #111811; }
+body:has(.app-shell.home-theme) { background: #000; }
 .app-shell.home-theme::before { opacity: .2; background-image: radial-gradient(rgba(169,210,160,.24) .65px, transparent .65px); }
 .home-theme .feedback-trigger { background: #19221a; }
 .home-theme .feedback-trigger:hover { border-color: rgba(169,210,160,.55); color: var(--lime); }
@@ -608,7 +674,7 @@ body:has(.app-shell.home-theme) { background: #111811; }
 .home-theme .library-index { color: var(--lime); }
 
 .app-shell.dod-theme {
-  --bg: #130d12;
+  --bg: #000;
   --panel: #1b141a;
   --panel-2: #261b23;
   --stroke: rgba(229, 190, 205, .14);
@@ -617,10 +683,10 @@ body:has(.app-shell.home-theme) { background: #111811; }
   --lime: #c77b93;
   --coral: #f0947f;
   --lavender: #baa5c9;
-  background: var(--bg);
+  background: #000;
   color: var(--cream);
 }
-body:has(.app-shell.dod-theme) { background: #130d12; }
+body:has(.app-shell.dod-theme) { background: #000; }
 .app-shell.dod-theme::before { opacity: .19; background-image: radial-gradient(rgba(199,123,147,.22) .65px, transparent .65px); }
 .dod-theme .feedback-trigger { background: #1b141a; }
 .dod-theme .feedback-trigger:hover { border-color: rgba(199,123,147,.55); color: var(--lime); }
@@ -655,7 +721,7 @@ body:has(.app-shell.dod-theme) { background: #130d12; }
 
 /* Reserved palette for the upcoming Bollywood Dumb Charades screen. */
 .app-shell.bollywood-theme {
-  --bg: #17100d;
+  --bg: #000;
   --panel: #211612;
   --panel-2: #2b1b16;
   --stroke: rgba(255, 190, 148, .16);
@@ -664,7 +730,7 @@ body:has(.app-shell.dod-theme) { background: #130d12; }
   --lime: #ff9a52;
   --coral: #ff5b55;
   --lavender: #e8a0a0;
-  background: var(--bg);
+  background: #000;
   color: var(--cream);
 }
 .app-shell.bollywood-theme::before { opacity: .2; background-image: radial-gradient(rgba(255,154,82,.22) .65px, transparent .65px); }

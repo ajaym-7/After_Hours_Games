@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import type { Audience, Ceiling, DrinkMode, Language, SavedSession, SessionCard, SessionPack, SessionSettings, Spice } from './types';
 import Stepper, { Step } from './Stepper.jsx';
 import NeverHaveIEver from './NeverHaveIEver';
+import AdditionalGames, { type AdditionalGameId } from './AdditionalGames';
 
 const STORAGE_KEY = 'drunk-or-drama-session-v1';
 const AGE_KEY = 'drunk-or-drama-adult-confirmed';
@@ -89,7 +90,7 @@ function App() {
   const [generationError, setGenerationError] = useState('');
   const [selectedFavorite, setSelectedFavorite] = useState<number | null>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<'drunk-or-drama' | 'never-have-i-ever' | null>(null);
+  const [selectedGame, setSelectedGame] = useState<'drunk-or-drama' | 'never-have-i-ever' | AdditionalGameId | null>(null);
 
   useEffect(() => {
     if (session) writeStorage(STORAGE_KEY, JSON.stringify(session));
@@ -163,6 +164,15 @@ function App() {
     setSelectedFavorite(null);
   }
 
+  function goToGameLibrary() {
+    if (session) {
+      if (!window.confirm('Leave this game and return to the game list? Your current session will end.')) return;
+      newSession();
+      return;
+    }
+    setSelectedGame(null);
+  }
+
   function confirmAge() {
     writeStorage(AGE_KEY, 'yes');
     setAgeConfirmed(true);
@@ -174,11 +184,15 @@ function App() {
 
   const themeClass = session || selectedGame === 'drunk-or-drama'
     ? 'dod-theme'
-    : selectedGame === 'never-have-i-ever' ? 'nhie-theme' : 'home-theme';
+    : selectedGame === 'never-have-i-ever' ? 'nhie-theme'
+      : selectedGame === 'bollywood-charades' ? 'bollywood-theme'
+        : selectedGame === 'truth-or-dare' ? 'truth-dare-theme'
+          : selectedGame === 'most-likely' ? 'most-likely-theme' : 'home-theme';
 
   return (
     <main className={`app-shell ${themeClass}`}>
       <header className="topbar">
+        {(session || selectedGame === 'drunk-or-drama') && <button className="back-games-button" onClick={goToGameLibrary}>← <span>Games</span></button>}
         <button className="brand" aria-label="After Hours games" onClick={() => { if (!session) setSelectedGame(null); }} disabled={Boolean(session)}>
           <span className="brand-name">AFTER<span>HOURS</span></span>
         </button>
@@ -194,6 +208,7 @@ function App() {
       />}
 
       {!session && selectedGame === 'never-have-i-ever' && <NeverHaveIEver onBack={() => setSelectedGame(null)} />}
+      {!session && selectedGame && selectedGame !== 'drunk-or-drama' && selectedGame !== 'never-have-i-ever' && <AdditionalGames game={selectedGame} onBack={() => setSelectedGame(null)} />}
 
       {session?.screen === 'playing' && <PlayScreen
         session={session} language={language} setLanguage={setSessionLanguage} markSkipped={markSkipped} finishTurn={finishTurn}
@@ -208,13 +223,17 @@ function App() {
   );
 }
 
-function GameLibrary({ onSelect }: { onSelect: (game: 'drunk-or-drama' | 'never-have-i-ever') => void }) {
+type GameSelection = 'drunk-or-drama' | 'never-have-i-ever' | AdditionalGameId;
+
+function GameLibrary({ onSelect }: { onSelect: (game: GameSelection) => void }) {
   return <section className="library-layout">
     <div className="library-intro"><p className="eyebrow">WELCOME TO AFTER HOURS</p><h1>Make a night<br />of <em>it.</em></h1><p>Pick a game. Pass the phone. Let the stories happen.</p></div>
     <div className="library-grid">
-      <button className="library-game-card featured" onClick={() => onSelect('drunk-or-drama')}><span className="library-index">01 / PARTY STORIES</span><h2>Drunk <i>or</i><br /><em>Drama?</em></h2><p>Confessions, dares, and a story the group won’t forget.</p><span className="library-action">Play game <b>↗</b></span></button>
-      <button className="library-game-card" onClick={() => onSelect('never-have-i-ever')}><span className="library-index">02 / REVEAL GAME</span><h2>Never have<br /><em>I ever.</em></h2><p>One statement. A room full of receipts.</p><span className="library-action">Play game <b>↗</b></span></button>
-      <div className="library-coming"><span className="library-index">COMING LATER</span><p>More games are getting their own tables.</p></div>
+      <button className="library-game-card library-game-card--amber" onClick={() => onSelect('truth-or-dare')}><span className="library-index">01 / BOLD CHOICES</span><h2>Truth <i>or</i><br /><em>Dare?</em></h2><p>Answer honestly or take a 45-second dare.</p><span className="library-action">Play game <b>↗</b></span></button>
+      <button className="library-game-card library-game-card--blue" onClick={() => onSelect('never-have-i-ever')}><span className="library-index">02 / REVEAL GAME</span><h2>Never have<br /><em>I ever.</em></h2><p>One statement. A room full of receipts.</p><span className="library-action">Play game <b>↗</b></span></button>
+      <button className="library-game-card library-game-card--bollywood" onClick={() => onSelect('bollywood-charades')}><span className="library-index">03 / ACTING GAME</span><h2>Bollywood<br /><em>Charades.</em></h2><p>Act the movie. Let the group guess.</p><span className="library-action">Play game <b>↗</b></span></button>
+      <button className="library-game-card library-game-card--violet" onClick={() => onSelect('most-likely')}><span className="library-index">04 / GROUP VOTE</span><h2>Who’s most<br /><em>likely to…</em></h2><p>Point to the friend who fits the prompt.</p><span className="library-action">Play game <b>↗</b></span></button>
+      <button className="library-game-card library-game-card--wine" onClick={() => onSelect('drunk-or-drama')}><span className="library-index">05 / PARTY STORIES</span><h2>Drunk <i>or</i><br /><em>Drama?</em></h2><p>Confessions, dares, and a story the group won’t forget.</p><span className="library-action">Play game <b>↗</b></span></button>
     </div>
   </section>;
 }
