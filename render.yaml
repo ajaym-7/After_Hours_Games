@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: after-hours-games
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GENERATION_PROVIDER
+        value: openrouter
+      - key: OPENROUTER_MODEL
+        value: openrouter/free
+      - key: OPENROUTER_PROVIDER_SORT
+        value: throughput
+      - key: OPENROUTER_API_KEY
+        sync: false
