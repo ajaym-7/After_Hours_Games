@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Audience, Ceiling, DrinkMode, Language, SavedSession, SessionCard, SessionPack, SessionSettings, Spice } from './types';
 import Stepper, { Step } from './Stepper.jsx';
+import InfiniteMenu from './InfiniteMenu.jsx';
 import NeverHaveIEver from './NeverHaveIEver';
 import AdditionalGames, { type AdditionalGameId } from './AdditionalGames';
 
@@ -225,15 +226,55 @@ function App() {
 
 type GameSelection = 'drunk-or-drama' | 'never-have-i-ever' | AdditionalGameId;
 
+type GameMenuItem = {
+  id: GameSelection;
+  image: string;
+  title: string;
+  description: string;
+};
+
+const GAME_MENU_ITEMS: GameMenuItem[] = [
+  { id: 'truth-or-dare', image: '/game-art/truth-or-dare.svg', title: 'Truth or Dare', description: 'Answer honestly, or take a 45-second dare.' },
+  { id: 'never-have-i-ever', image: '/game-art/never-have-i-ever.svg', title: 'Never Have I Ever', description: 'One statement. A room full of receipts.' },
+  { id: 'bollywood-charades', image: '/game-art/bollywood-charades.svg', title: 'Bollywood Charades', description: 'Act the movie. Let the group guess.' },
+  { id: 'most-likely', image: '/game-art/most-likely.svg', title: 'Who’s Most Likely To…', description: 'Vote for the friend who fits the prompt.' },
+  { id: 'drunk-or-drama', image: '/game-art/drunk-or-drama.svg', title: 'Drunk or Drama', description: 'Confessions, dares, and stories worth retelling.' },
+];
+
 function GameLibrary({ onSelect }: { onSelect: (game: GameSelection) => void }) {
-  return <section className="library-layout">
-    <div className="library-intro"><p className="eyebrow">WELCOME TO AFTER HOURS</p><h1>Make a night<br />of <em>it.</em></h1><p>Pick a game. Pass the phone. Let the stories happen.</p></div>
-    <div className="library-grid">
-      <button className="library-game-card library-game-card--amber" onClick={() => onSelect('truth-or-dare')}><span className="library-index">01 / BOLD CHOICES</span><h2>Truth <i>or</i><br /><em>Dare?</em></h2><p>Answer honestly or take a 45-second dare.</p><span className="library-action">Play game <b>↗</b></span></button>
-      <button className="library-game-card library-game-card--blue" onClick={() => onSelect('never-have-i-ever')}><span className="library-index">02 / REVEAL GAME</span><h2>Never have<br /><em>I ever.</em></h2><p>One statement. A room full of receipts.</p><span className="library-action">Play game <b>↗</b></span></button>
-      <button className="library-game-card library-game-card--bollywood" onClick={() => onSelect('bollywood-charades')}><span className="library-index">03 / ACTING GAME</span><h2>Bollywood<br /><em>Charades.</em></h2><p>Act the movie. Let the group guess.</p><span className="library-action">Play game <b>↗</b></span></button>
-      <button className="library-game-card library-game-card--violet" onClick={() => onSelect('most-likely')}><span className="library-index">04 / GROUP VOTE</span><h2>Who’s most<br /><em>likely to…</em></h2><p>Point to the friend who fits the prompt.</p><span className="library-action">Play game <b>↗</b></span></button>
-      <button className="library-game-card library-game-card--wine" onClick={() => onSelect('drunk-or-drama')}><span className="library-index">05 / PARTY STORIES</span><h2>Drunk <i>or</i><br /><em>Drama?</em></h2><p>Confessions, dares, and a story the group won’t forget.</p><span className="library-action">Play game <b>↗</b></span></button>
+  return <section className="game-library-screen" aria-label="Choose a game">
+    <div className="game-library-heading">
+      <p className="eyebrow">WELCOME TO AFTER HOURS</p>
+      <h1>Pick your <em>game.</em></h1>
+      <p>Drag the cards around, then select a game to play.</p>
+    </div>
+    <div className="game-library-menu">
+      <InfiniteMenu
+        items={GAME_MENU_ITEMS}
+        count={72}
+        tileSize={0.72}
+        roundness={0.12}
+        zoom={1.65}
+        pullBack={0.8}
+        stretch={0.45}
+        inertia={0.6}
+        autoplay={3}
+        grayscale={false}
+        dim={0.2}
+        intro
+        showInfo
+        theme="dark"
+        accentColor="#a9d2a0"
+        onItemClick={(item) => onSelect(item.id as GameSelection)}
+        renderInfo={(item, _index, moving) => <div className={`game-menu-info${moving ? ' is-moving' : ''}`}>
+          <div className="game-menu-copy">
+            <span className="game-menu-kicker">GAME {String(GAME_MENU_ITEMS.findIndex((entry) => entry.id === item.id) + 1).padStart(2, '0')} / 05</span>
+            <h2>{item.title}</h2>
+            <p>{item.description}</p>
+          </div>
+          <button className="game-menu-select" type="button" onClick={() => onSelect(item.id as GameSelection)}>Select game <span>↗</span></button>
+        </div>}
+      />
     </div>
   </section>;
 }

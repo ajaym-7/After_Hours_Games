@@ -673,6 +673,55 @@ body:has(.app-shell.home-theme) { background: #000; }
 .home-theme .library-game-card:hover { border-color: rgba(169,210,160,.62); }
 .home-theme .library-index { color: var(--lime); }
 
+/* React Bits InfiniteMenu game picker. */
+.game-library-screen {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 1180px);
+  min-height: 0;
+  flex: 1;
+  margin: 0 auto;
+  padding: clamp(16px, 2.5vh, 26px) 0 18px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-items: center;
+}
+.game-library-heading { position: relative; z-index: 1; text-align: center; }
+.game-library-heading .eyebrow { margin: 0 0 5px; color: var(--lime); }
+.game-library-heading h1 { margin: 0; font: 700 clamp(34px, 4vw, 52px)/1 var(--display); letter-spacing: -.07em; }
+.game-library-heading h1 em { color: var(--lime); font-style: normal; }
+.game-library-heading > p:last-child { margin: 8px 0 0; color: #a3a79c; font-size: 15px; }
+.game-library-menu { width: 100%; height: min(68vh, 660px); min-height: 390px; position: relative; }
+.game-library-menu .infinite-menu { --infinite-menu-text: #f1efe8; }
+.game-menu-info { position: absolute; inset: 0; pointer-events: none; transition: opacity .2s ease; }
+.game-menu-info.is-moving { opacity: .18; }
+.game-menu-copy { position: absolute; right: 15%; bottom: 88px; left: 15%; text-align: center; text-shadow: 0 3px 20px rgba(0,0,0,.9); }
+.game-menu-kicker { color: var(--lime); font: 11px var(--mono); letter-spacing: .15em; }
+.game-menu-copy h2 { margin: 5px 0 3px; color: #f1efe8; font: 700 clamp(24px, 3vw, 36px)/1.05 var(--display); letter-spacing: -.055em; }
+.game-menu-copy p { margin: 0; color: #c5c8be; font-size: 15px; line-height: 1.4; }
+.game-menu-select { position: absolute; bottom: 22px; left: 50%; min-width: 190px; min-height: 48px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: space-between; gap: 22px; border: 1px solid var(--lime); border-radius: 8px; background: var(--lime); color: #14180f; font-size: 15px; font-weight: 700; cursor: pointer; pointer-events: auto; transform: translateX(-50%); transition: background .18s, transform .18s; }
+.game-menu-select:hover { background: #c6e8bb; transform: translateX(-50%) translateY(-2px); }
+.game-menu-select span { font-size: 18px; font-weight: 400; }
+.game-library-menu .infinite-menu__canvas { cursor: grab; }
+.game-library-menu .infinite-menu:focus-visible { box-shadow: none; }
+
+@media (max-width: 760px) {
+  .game-library-screen { width: min(100%, 560px); padding: 20px 0 14px; grid-template-rows: auto minmax(400px, 1fr); }
+  .game-library-heading h1 { font-size: clamp(34px, 9vw, 48px); }
+  .game-library-heading > p:last-child { font-size: 14px; }
+  .game-library-menu { height: 62dvh; min-height: 400px; max-height: 570px; }
+  .game-menu-copy { right: 7%; bottom: 82px; left: 7%; }
+  .game-menu-copy h2 { font-size: clamp(24px, 7vw, 32px); }
+  .game-menu-copy p { font-size: 13px; }
+  .game-menu-select { bottom: 16px; min-height: 45px; }
+}
+
+@media (max-width: 420px) {
+  .game-library-screen { padding-top: 15px; }
+  .game-library-menu { min-height: 370px; height: 58dvh; }
+  .game-menu-copy { bottom: 76px; }
+}
+
 .app-shell.dod-theme {
   --bg: #000;
   --panel: #1b141a;

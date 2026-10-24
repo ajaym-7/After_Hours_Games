@@ -1,5 +1,5 @@
 declare module '*.jsx' {
-  import type { ButtonHTMLAttributes, ComponentType, ReactNode } from 'react';
+  import type { ButtonHTMLAttributes, ComponentType, CSSProperties, ReactNode } from 'react';
   export interface StepProps {
     children?: ReactNode;
     title?: ReactNode;
@@ -29,6 +29,31 @@ declare module '*.jsx' {
     radius?: number;
     width?: number | string;
     className?: string;
+    items?: InfiniteMenuItem[];
+    count?: number;
+    tileSize?: number;
+    roundness?: number;
+    zoom?: number;
+    pullBack?: number;
+    stretch?: number;
+    inertia?: number;
+    autoplay?: number;
+    grayscale?: boolean;
+    dim?: number;
+    intro?: boolean;
+    showInfo?: boolean;
+    renderInfo?: (item: InfiniteMenuItem, index: number, moving: boolean) => ReactNode;
+    backgroundColor?: string;
+    onActiveChange?: (item: InfiniteMenuItem, index: number) => void;
+    onItemClick?: (item: InfiniteMenuItem, index: number) => void;
+    style?: CSSProperties;
+  }
+  export interface InfiniteMenuItem {
+    id: string;
+    image: string;
+    link?: string;
+    title: string;
+    description: string;
   }
   export const Step: ComponentType<StepProps>;
   const Stepper: ComponentType<StepperProps>;
