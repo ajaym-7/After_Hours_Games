@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Audience, Ceiling, DrinkMode, Language, SavedSession, SessionCard, SessionPack, SessionSettings, Spice } from './types';
 import Stepper, { Step } from './Stepper.jsx';
+import NeverHaveIEver from './NeverHaveIEver';
 
 const STORAGE_KEY = 'drunk-or-drama-session-v1';
 const AGE_KEY = 'drunk-or-drama-adult-confirmed';
@@ -88,6 +89,7 @@ function App() {
   const [generationError, setGenerationError] = useState('');
   const [selectedFavorite, setSelectedFavorite] = useState<number | null>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<'drunk-or-drama' | 'never-have-i-ever' | null>(null);
 
   useEffect(() => {
     if (session) writeStorage(STORAGE_KEY, JSON.stringify(session));
@@ -156,6 +158,7 @@ function App() {
   function newSession() {
     removeStorage(STORAGE_KEY);
     setSession(null);
+    setSelectedGame(null);
     setGenerationError('');
     setSelectedFavorite(null);
   }
@@ -172,17 +175,21 @@ function App() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div className="brand" aria-label="Drunk or Drama">
+        <button className="brand" aria-label="After Hours games" onClick={() => { if (!session) setSelectedGame(null); }} disabled={Boolean(session)}>
           <span className="brand-name">AFTER<span>HOURS</span></span>
-        </div>
+        </button>
         <button className="feedback-trigger" onClick={() => setFeedbackOpen(true)}>Feedback</button>
       </header>
 
-      {!session && <SetupScreen
+      {!session && selectedGame === null && <GameLibrary onSelect={setSelectedGame} />}
+
+      {!session && selectedGame === 'drunk-or-drama' && <SetupScreen
         settings={settings} updateSetting={updateSetting} nameText={nameText} setNameText={setNameText}
         parsedNames={parsedNames} namesInvalid={namesInvalid} generationError={generationError}
         generating={generating} startSession={startSession} language={language} setLanguage={setSessionLanguage}
       />}
+
+      {!session && selectedGame === 'never-have-i-ever' && <NeverHaveIEver onBack={() => setSelectedGame(null)} />}
 
       {session?.screen === 'playing' && <PlayScreen
         session={session} language={language} setLanguage={setSessionLanguage} markSkipped={markSkipped} finishTurn={finishTurn}
@@ -195,6 +202,17 @@ function App() {
       {feedbackOpen && <FeedbackDialog onClose={() => setFeedbackOpen(false)} />}
     </main>
   );
+}
+
+function GameLibrary({ onSelect }: { onSelect: (game: 'drunk-or-drama' | 'never-have-i-ever') => void }) {
+  return <section className="library-layout">
+    <div className="library-intro"><p className="eyebrow">WELCOME TO AFTER HOURS</p><h1>Make a night<br />of <em>it.</em></h1><p>Pick a game. Pass the phone. Let the stories happen.</p></div>
+    <div className="library-grid">
+      <button className="library-game-card featured" onClick={() => onSelect('drunk-or-drama')}><span className="library-index">01 / PARTY STORIES</span><h2>Drunk <i>or</i><br /><em>Drama?</em></h2><p>Confessions, dares, and a story the group won’t forget.</p><span className="library-action">Play game <b>↗</b></span></button>
+      <button className="library-game-card" onClick={() => onSelect('never-have-i-ever')}><span className="library-index">02 / REVEAL GAME</span><h2>Never have<br /><em>I ever.</em></h2><p>One statement. A room full of receipts.</p><span className="library-action">Play game <b>↗</b></span></button>
+      <div className="library-coming"><span className="library-index">COMING LATER</span><p>More games are getting their own tables.</p></div>
+    </div>
+  </section>;
 }
 
 function AgeGate({ onConfirm }: { onConfirm: () => void }) {
