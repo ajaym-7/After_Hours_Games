@@ -8,10 +8,11 @@ const MODES = new Set(['drink', 'no-drink']);
 const CEILINGS = new Set(['suggestive', 'explicit']);
 const CARD_TYPES = new Set(['confession', 'story', 'act', 'dare', 'drink', 'group-challenge']);
 const generationWindows = new Map();
+const inFlightGenerations = new Map();
 const feedbackWindows = new Map();
 const feedbackFile = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../data/feedback.ndjson');
-const EN_DRINK_WORDS = /\b(drink|drinking|sip|shots?|alcohol|beer|wine|whisky|whiskey|vodka|booze|cocktail|rum|gin|tequila|beverage)\b/i;
-const HI_DRINK_WORDS = /\b(daaru|sharab|sharaab|sip|drink|peena|pee lo|pi lo|shot|beer|wine|vodka|whisky|whiskey)\b/i;
+const EN_DRINK_WORDS = /\b(drink|drinking|sip|shots?|alcohol|beer|wine|whisky|whiskey|vodka|booze|cocktail|rum|gin|tequila|beverage|liquor)\b/i;
+const HI_DRINK_WORDS = /\b(daaru|sharab|sharaab|sip|drink|peena|pee lo|pi lo|piyo|peeyo|gho?ont|nasha|nashe|madira|shot|beer|wine|vodka|whisky|whiskey|alcohol|booze|cocktail|rum|gin|tequila|liquor|beverage)\b/i;
 
 function parseGeneratedJson(value) {
   if (value && typeof value === 'object' && !Array.isArray(value)) return value;
@@ -46,6 +47,72 @@ function parseGeneratedJson(value) {
     }
   }
   throw new Error('The generator response was not valid JSON.');
+}
+
+function hasSipInstruction(card) {
+  return /\bsip\b/i.test(card?.promptEn || '') || /\b(?:sip\s+lo|sip\s+lena|sip\s+aur)\b/i.test(card?.promptHi || '');
+}
+
+function promptFingerprint(card) {
+  return `${card.promptEn} ${card.promptHi}`.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+}
+
+function fallbackCard(input, index) {
+  const round = Math.floor(index / input.playerCount) + 1;
+  const seat = (index % input.playerCount) + 1;
+  const titleEn = ` Give it the title “Round ${round}, seat ${seat}.”`;
+  const titleHi = ` Isse “Round ${round}, seat ${seat}” title do.`;
+  const variants = {
+    chill: [
+      { type: 'story', en: 'Tell the group about a tiny plan that turned into a surprisingly chaotic story; a made-up version is welcome.', hi: 'Group ko ek chhote plan ki surprisingly chaotic story sunao; chaaho toh fictional version bana lo.' },
+      { type: 'act', en: 'Give a 45-second movie-trailer voice-over for an ordinary mistake you made, building up to its ridiculous ending.', hi: 'Apni kisi ordinary mistake ka 45-second movie-trailer voice-over do aur uske ridiculous ending tak suspense banao.' },
+    ],
+    spicy: [
+      { type: 'confession', en: 'Confess the boldest harmless excuse you have used to dodge an awkward plan, or invent one and defend it like sworn testimony.', hi: 'Kisi awkward plan se bachne ke liye apna boldest harmless bahana confess karo—or fictional bahana bana ke sworn testimony jaisa defend karo.' },
+      { type: 'story', en: 'Tell the story of a confident move that went sideways, ending at the exact moment you realized it; fictional stories count.', hi: 'Ek confident move ki story sunao jo ulta pad gaya, bilkul us moment par end karo jab tumhe samajh aaya; fictional stories bhi chalengi.' },
+    ],
+    wild: [
+      { type: 'dare', en: 'Deliver a 45-second emergency press conference about a harmless mistake; stay in character through two questions.', hi: 'Ek harmless mistake par 45-second emergency press conference do; do questions tak character mein raho.' },
+      { type: 'group-challenge', en: 'With a willing co-star, act out a scandalous misunderstanding as a 45-second silent movie; let the group guess the twist.', hi: 'Ek willing co-star ke saath scandalous misunderstanding ko 45-second silent movie mein act karo; group twist guess karega.' },
+    ],
+  };
+  const choice = variants[input.spice][index % variants[input.spice].length];
+  return {
+    type: choice.type,
+    promptEn: `${choice.en}${titleEn}`,
+    promptHi: `${choice.hi}${titleHi}`,
+    skipPenaltyEn: 'Skip it and give a 30-second courtroom defense of an absurd accusation.',
+    skipPenaltyHi: 'Skip karke ek absurd accusation par 30-second courtroom defense do.',
+    durationSeconds: choice.type === 'dare' ? 45 : 0,
+  };
+}
+
+function repairIncompleteCards(pack, input) {
+  const cardCount = input.playerCount * (input.turnsPerPlayer ?? 1);
+  if (!Array.isArray(pack?.cards) || pack.cards.length !== cardCount) return { cards: pack?.cards, repairedCount: 0 };
+
+  const fingerprints = new Set();
+  let repairedCount = 0;
+  const cards = pack.cards.map((card, index) => {
+    const fieldsComplete = card && CARD_TYPES.has(card.type)
+      && ['promptEn', 'promptHi', 'skipPenaltyEn', 'skipPenaltyHi'].every((field) => typeof card[field] === 'string' && card[field].trim().length >= 8 && card[field].length <= 700)
+      && (card.type === 'dare' ? Number.isInteger(card.durationSeconds) && card.durationSeconds >= 45 && card.durationSeconds <= 60 : card.durationSeconds === 0);
+    const violatesMode = input.drinkMode === 'no-drink'
+      ? card?.type === 'drink' || EN_DRINK_WORDS.test(`${card?.promptEn || ''} ${card?.skipPenaltyEn || ''}`) || HI_DRINK_WORDS.test(`${card?.promptHi || ''} ${card?.skipPenaltyHi || ''}`)
+      : card?.type === 'drink' && !hasSipInstruction(card);
+    let candidate = fieldsComplete && !violatesMode ? card : null;
+    if (candidate && fingerprints.has(promptFingerprint(candidate))) candidate = null;
+    if (!candidate) {
+      repairedCount++;
+      candidate = fallbackCard(input, index);
+    }
+    fingerprints.add(promptFingerprint(candidate));
+    return candidate;
+  });
+
+  const repairLimit = Math.max(1, Math.ceil(cardCount * 0.25));
+  if (repairedCount > repairLimit) throw new Error(`Too many incomplete cards (${repairedCount}).`);
+  return { cards, repairedCount };
 }
 
 export function validateSessionInput(input) {
@@ -109,7 +176,7 @@ function buildInstructions(input) {
     ? 'This is Drink mode. Include at least one card whose type is exactly "drink" and whose prompt clearly says “Take a sip”. Do not specify quantity, shots, or chugging. Other cards should not mention drinking unless their card type is drink.'
     : 'This is No Drink mode. No generated prompt or skip penalty may mention drinking, alcohol, beverages, sips, shots, beer, wine, whisky, vodka, or their Hindi/Hinglish equivalents. Use bold non-drinking forfeits instead.';
 
-  return `Create exactly ${cardCount} original, high-energy party cards for the standalone adult game Drunk or Drama. There are ${input.playerCount} players and ${turnsPerPlayer} turns per player. Order the cards in rounds: one card for each player in round 1, then one for each player in round 2, and so on. This is a mixed prompt game: confessions, stories, acting, dares, and (only in Drink mode) drink prompts. It is NOT a true-or-false guessing game. The “drama” is the memorable party moment.
+  return `Create exactly ${cardCount} original, high-energy party cards for the standalone adult game Drunk or Drama. There are ${input.playerCount} players and ${turnsPerPlayer} turns per player. Order cards in rounds, one card per player each round. Mix confessions, stories, acting, dares, and (only in Drink mode) drink prompts. The drama is the memorable party moment.
 
 Group fit: ${group}.
 Spice: ${input.spice}. Chill still needs a playful hook; spicy should be candid and awkward; wild should feel like a season-finale reveal, outrageous improv, bold social stakes, or a story with a twist. Avoid bland prompts that only ask “what is your favorite” or “tell a funny story.”
@@ -118,7 +185,7 @@ ${drinking}
 
 Quality rules:
 - Return both English and natural Romanized Hinglish for every card. Hinglish should sound like how adults text and speak, not a literal translation.
-- Keep each prompt to 1–2 vivid sentences and each skip penalty to one short sentence. Do not add explanations or headings inside card text.
+- Keep each prompt to one vivid sentence per language (25 words max each) and each skip penalty to one short sentence (12 words max each). Do not add explanations or headings inside card text.
 - Use varied card types across the pack; avoid consecutive cards of the same type when possible.
 - Every dare must take 45–60 seconds and include a clear, entertaining objective. Set durationSeconds to an integer from 45 to 60 for dares, and 0 for all other card types.
 - Every card must include a specific skip penalty in both languages. In Drink mode, a penalty may say “Take a sip” or give a bold, harmless performance alternative. In No Drink mode, it must be non-drinking.
@@ -157,11 +224,16 @@ export function validateGeneratedPack(pack, input) {
   if (input.drinkMode === 'drink' && !pack.cards.some((card) => card.type === 'drink')) {
     throw new Error('Drink mode needs at least one drink card. Try again.');
   }
+  if (input.drinkMode === 'drink' && pack.cards.some((card) => card.type === 'drink' && !hasSipInstruction(card))) {
+    throw new Error('A Drink card must include a sip prompt. Try again.');
+  }
   return pack.cards;
 }
 
 function guaranteeDrinkCard(cards, input) {
-  if (!Array.isArray(cards) || input.drinkMode !== 'drink' || cards.some((card) => card?.type === 'drink')) return cards;
+  if (!Array.isArray(cards) || input.drinkMode !== 'drink') return cards;
+  const normalized = cards.map((card) => card?.type === 'drink' && !hasSipInstruction(card) ? { ...card, type: 'story' } : card);
+  if (normalized.some((card) => card?.type === 'drink' && hasSipInstruction(card))) return normalized;
 
   const prompt = input.spice === 'wild'
     ? {
@@ -186,32 +258,51 @@ function guaranteeDrinkCard(cards, input) {
     skipPenaltyHi: 'Sip skip karke apne kisi harmless chaotic decision ki 30-second courtroom defense do.',
     durationSeconds: 0,
   };
-  return [...cards.slice(0, -1), replacement];
+  return [...normalized.slice(0, -1), replacement];
 }
 
-export async function generateSessionPack(rawInput, env = process.env) {
+export function generateSessionPack(rawInput, env = process.env) {
   const input = validateSessionInput(rawInput);
   const provider = (env.GENERATION_PROVIDER || 'ollama').toLowerCase();
+  const model = provider === 'openrouter' ? (env.OPENROUTER_MODEL || 'openrouter/free') : (env.OLLAMA_MODEL || 'gemma4:latest');
+  const route = provider === 'ollama'
+    ? [env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434', env.OLLAMA_KEEP_ALIVE || '15m']
+    : [env.OPENROUTER_PROVIDER_SORT || (model === 'openrouter/free' ? 'throughput' : '')];
+  const key = JSON.stringify([provider, model, route, input.audience, input.spice, input.drinkMode, input.ceiling, input.playerCount, input.turnsPerPlayer]);
+  const current = inFlightGenerations.get(key);
+  if (current) return current;
+
+  const task = generateValidatedPack(input, env, provider, model);
+  inFlightGenerations.set(key, task);
+  void task.finally(() => {
+    if (inFlightGenerations.get(key) === task) inFlightGenerations.delete(key);
+  }).catch(() => {});
+  return task;
+}
+
+async function generateValidatedPack(input, env, provider, model) {
   const cardCount = input.playerCount * input.turnsPerPlayer;
-  const maxOutputTokens = provider === 'openrouter' ? 8000 : 24000;
-  let outputBudget = Math.min(maxOutputTokens, Math.max(4096, cardCount * 1000));
+  const maxOutputTokens = provider === 'openrouter' ? 8000 : 16000;
+  const outputBudget = Math.min(maxOutputTokens, Math.max(2048, cardCount * (provider === 'openrouter' ? 256 : 300) + 1024));
   let url;
-  let model;
   let headers = { 'Content-Type': 'application/json' };
   let body;
   if (provider === 'ollama') {
     const baseUrl = (env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
-    model = env.OLLAMA_MODEL || 'gemma4:latest';
     url = `${baseUrl}/api/chat`;
+    const estimatedPromptTokens = Math.ceil(buildInstructions(input).length / 3.5);
+    const requestedContext = outputBudget + estimatedPromptTokens + 512;
+    const contextSize = Math.min(32768, Math.max(4096, 2 ** Math.ceil(Math.log2(requestedContext))));
     body = {
       model,
       stream: false,
+      keep_alive: env.OLLAMA_KEEP_ALIVE || '15m',
       format: schemaFor(input),
       messages: [
         { role: 'system', content: buildInstructions(input) },
         { role: 'user', content: 'Generate the session pack now.' },
       ],
-      options: { num_predict: outputBudget },
+      options: { num_predict: outputBudget, num_ctx: contextSize },
     };
   } else if (provider === 'openrouter') {
     if (!env.OPENROUTER_API_KEY) {
@@ -219,7 +310,6 @@ export async function generateSessionPack(rawInput, env = process.env) {
       error.statusCode = 503;
       throw error;
     }
-    model = env.OPENROUTER_MODEL || 'openrouter/free';
     url = 'https://openrouter.ai/api/v1/chat/completions';
     headers.Authorization = `Bearer ${env.OPENROUTER_API_KEY}`;
     body = {
@@ -234,6 +324,8 @@ export async function generateSessionPack(rawInput, env = process.env) {
       },
       max_tokens: outputBudget,
     };
+    const providerSort = env.OPENROUTER_PROVIDER_SORT || (model === 'openrouter/free' ? 'throughput' : '');
+    if (providerSort) body.provider = { sort: providerSort, allow_fallbacks: true };
   } else {
     const error = new Error('Unknown generation provider. Set GENERATION_PROVIDER to ollama or openrouter.');
     error.statusCode = 503;
@@ -263,6 +355,7 @@ export async function generateSessionPack(rawInput, env = process.env) {
 
   const wasCutShort = (result) => result.done === false || result.done_reason === 'length' || result.choices?.[0]?.finish_reason === 'length';
   let lastError;
+  const startedAt = Date.now();
   for (let attempt = 0; attempt < 2; attempt++) {
     const { response, payload } = await requestGeneration();
     if (!response.ok) {
@@ -278,15 +371,21 @@ export async function generateSessionPack(rawInput, env = process.env) {
         ? payload.choices?.[0]?.message?.content
         : payload.message?.content;
       const parsed = parseGeneratedJson(generatedText);
-      const cards = validateGeneratedPack({ ...parsed, cards: guaranteeDrinkCard(parsed.cards, input) }, input);
+      const repaired = repairIncompleteCards(parsed, input);
+      const cards = validateGeneratedPack({ ...parsed, cards: guaranteeDrinkCard(repaired.cards, input) }, input);
+      const elapsedMs = Date.now() - startedAt;
+      const stats = provider === 'ollama'
+        ? { modelLoadMs: Math.round((payload.load_duration || 0) / 1e6), outputTokens: payload.eval_count || null }
+        : { inputTokens: payload.usage?.prompt_tokens ?? null, outputTokens: payload.usage?.completion_tokens ?? null };
+      console.info('[session-generation]', JSON.stringify({ provider, model, cardCount: cards.length, repairedCards: repaired.repairedCount, elapsedMs, ...stats }));
       return { cards, generatedAt: new Date().toISOString(), mode: input.drinkMode };
     } catch (error) {
       lastError = error;
       if (attempt === 0) {
-        outputBudget = Math.min(maxOutputTokens, Math.max(outputBudget + 2048, outputBudget * 2));
-        if (provider === 'ollama') body.options.num_predict = outputBudget;
-        else body.max_tokens = outputBudget;
-        body.messages[1].content = 'Regenerate the complete session. Return only one valid JSON object matching the schema. No markdown, commentary, or text outside the object.';
+        const retryBudget = Math.min(maxOutputTokens, Math.max(outputBudget + 1024, outputBudget * 2));
+        if (provider === 'ollama') body.options.num_predict = retryBudget;
+        else body.max_tokens = retryBudget;
+        body.messages[1].content = `Regenerate the complete session. Make every card complete, concise, bilingual, and unique. Previous attempt failed validation: ${lastError.message}. Return only one valid JSON object matching the schema; no markdown or commentary.`;
       }
     }
   }

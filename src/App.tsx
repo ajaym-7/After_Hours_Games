@@ -6,6 +6,18 @@ import Stepper, { Step } from './Stepper.jsx';
 const STORAGE_KEY = 'drunk-or-drama-session-v1';
 const AGE_KEY = 'drunk-or-drama-adult-confirmed';
 
+function readStorage(key: string): string | null {
+  try { return window.localStorage.getItem(key); } catch { return null; }
+}
+
+function writeStorage(key: string, value: string) {
+  try { window.localStorage.setItem(key, value); } catch { /* The game remains playable without persistence. */ }
+}
+
+function removeStorage(key: string) {
+  try { window.localStorage.removeItem(key); } catch { /* The game remains playable without persistence. */ }
+}
+
 const audiences: { id: Audience; title: string }[] = [
   { id: 'close-friends', title: 'Close friends' },
   { id: 'mixed-group', title: 'Mixed group' },
@@ -27,14 +39,33 @@ const typeCopy: Record<SessionCard['type'], { en: string; hi: string; icon: stri
 
 function readSavedSession(): SavedSession | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = readStorage(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as SavedSession;
-    if (!parsed.pack?.cards?.length) return null;
+    const settings = parsed?.settings;
+    const cards = parsed?.pack?.cards;
+    if (!settings || !Array.isArray(cards) || cards.length < 2) return null;
     if (!['playing', 'vote', 'result'].includes(parsed.screen)) return null;
-    const turnsPerPlayer = parsed.settings.turnsPerPlayer || 1;
-    if (![1, 2, 3].includes(turnsPerPlayer) || parsed.pack.cards.length !== parsed.settings.playerCount * turnsPerPlayer) return null;
-    return { ...parsed, settings: { ...parsed.settings, turnsPerPlayer } };
+    if (!['close-friends', 'mixed-group', 'new-people'].includes(settings.audience)) return null;
+    if (!['chill', 'spicy', 'wild'].includes(settings.spice)) return null;
+    if (!['drink', 'no-drink'].includes(settings.drinkMode) || !['suggestive', 'explicit'].includes(settings.ceiling)) return null;
+    if (!Number.isInteger(settings.playerCount) || settings.playerCount < 2 || settings.playerCount > 12) return null;
+    const turnsPerPlayer = settings.turnsPerPlayer ?? 1;
+    if (![1, 2, 3].includes(turnsPerPlayer) || cards.length !== settings.playerCount * turnsPerPlayer) return null;
+    if (parsed.pack.mode && parsed.pack.mode !== settings.drinkMode) return null;
+    if (!['en', 'hi'].includes(parsed.language)) return null;
+    if (!Number.isInteger(parsed.turn) || parsed.turn < 0 || parsed.turn >= cards.length) return null;
+    if (parsed.screen !== 'playing' && parsed.turn !== cards.length - 1) return null;
+    if (!Array.isArray(settings.playerNames) || (settings.playerNames.length !== 0 && settings.playerNames.length !== settings.playerCount)) return null;
+    if (settings.playerNames.some((name) => typeof name !== 'string' || name.length > 24)) return null;
+    if (![parsed.completed, parsed.skipped].every((flags) => Array.isArray(flags) && flags.length === cards.length && flags.every((flag) => typeof flag === 'boolean'))) return null;
+    if (parsed.favoriteIndex !== null && (!Number.isInteger(parsed.favoriteIndex) || parsed.favoriteIndex < 0 || parsed.favoriteIndex >= cards.length)) return null;
+    if (parsed.screen === 'result' && parsed.favoriteIndex === null) return null;
+    const validTypes = ['confession', 'story', 'act', 'dare', 'drink', 'group-challenge'];
+    if (!cards.every((card) => card && validTypes.includes(card.type)
+      && (['promptEn', 'promptHi', 'skipPenaltyEn', 'skipPenaltyHi'] as const).every((field) => typeof card[field] === 'string' && card[field].trim())
+      && (card.type === 'dare' ? Number.isInteger(card.durationSeconds) && card.durationSeconds >= 45 && card.durationSeconds <= 60 : card.durationSeconds === 0))) return null;
+    return { ...parsed, settings: { ...settings, turnsPerPlayer } };
   } catch {
     return null;
   }
@@ -47,7 +78,7 @@ function playerLabel(session: SavedSession, index: number): string {
 
 function App() {
   const [session, setSession] = useState<SavedSession | null>(readSavedSession);
-  const [ageConfirmed, setAgeConfirmed] = useState(() => localStorage.getItem(AGE_KEY) === 'yes');
+  const [ageConfirmed, setAgeConfirmed] = useState(() => readStorage(AGE_KEY) === 'yes');
   const [settings, setSettings] = useState<SessionSettings>({
     audience: 'close-friends', spice: 'wild', drinkMode: 'drink', ceiling: 'suggestive', playerCount: 5, turnsPerPlayer: 1, playerNames: [],
   });
@@ -59,7 +90,7 @@ function App() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   useEffect(() => {
-    if (session) localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    if (session) writeStorage(STORAGE_KEY, JSON.stringify(session));
   }, [session]);
 
   const parsedNames = useMemo(() => nameText.split('\n').map((name) => name.trim()).filter(Boolean), [nameText]);
@@ -123,14 +154,14 @@ function App() {
   }
 
   function newSession() {
-    localStorage.removeItem(STORAGE_KEY);
+    removeStorage(STORAGE_KEY);
     setSession(null);
     setGenerationError('');
     setSelectedFavorite(null);
   }
 
   function confirmAge() {
-    localStorage.setItem(AGE_KEY, 'yes');
+    writeStorage(AGE_KEY, 'yes');
     setAgeConfirmed(true);
   }
 

@@ -1,6 +1,6 @@
-# Drunk or Drama
+# After Hours Games
 
-A responsive, installable party-game PWA. The host configures a session, the server generates a bilingual card pack, and the group plays one turn per player before voting for the Drama of the Night.
+A responsive, installable party-game PWA. **Drunk or Drama** is the first standalone game; each game has its own session setup, generated card pack, play flow, and ending.
 
 ## Run locally
 
@@ -11,6 +11,8 @@ A responsive, installable party-game PWA. The host configures a session, the ser
 5. Run `npm run dev` and open the local URL Vite prints.
 
 The live session endpoint sends schema-constrained generation requests to either Ollama or OpenRouter. To use OpenRouter instead, set `GENERATION_PROVIDER=openrouter` and add your key to `OPENROUTER_API_KEY` in `.env`. The default model is `openrouter/free`; set `OPENROUTER_MODEL` to use another model. Keep the key server-side and never add it to a `VITE_` variable.
+
+Generation is sized to the requested number of cards, and identical requests already in progress share one model call. Successful sessions are not cached, so a new session can still be fresh. Ollama keeps the model warm for 15 minutes by default (`OLLAMA_KEEP_ALIVE`) and receives a context size matched to the deck. OpenRouter's default free route prioritizes throughput; set `OPENROUTER_PROVIDER_SORT` to `latency` or `throughput` to tune routing.
 
 ## Build and serve
 
