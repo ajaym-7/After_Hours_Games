@@ -172,6 +172,7 @@ const InfiniteMenu = ({
   backgroundColor,
   onActiveChange,
   onItemClick,
+  onUserInteract,
   className = '',
   style
 }) => {
@@ -199,8 +200,8 @@ const InfiniteMenu = ({
   settingsRef.current = settings;
   const itemsRef = useRef(items);
   itemsRef.current = items;
-  const callbacksRef = useRef({ onActiveChange, onItemClick });
-  callbacksRef.current = { onActiveChange, onItemClick };
+  const callbacksRef = useRef({ onActiveChange, onItemClick, onUserInteract });
+  callbacksRef.current = { onActiveChange, onItemClick, onUserInteract };
 
   useEffect(() => {
     const root = rootRef.current;
@@ -691,6 +692,7 @@ const InfiniteMenu = ({
 
     const onPointerDown = event => {
       if (event.pointerType === 'mouse' && event.button !== 0) return;
+      callbacksRef.current.onUserInteract?.();
       canvas.setPointerCapture?.(event.pointerId);
       drag.active = true;
       drag.id = event.pointerId;
@@ -731,9 +733,11 @@ const InfiniteMenu = ({
     const onKeyDown = event => {
       const directions = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
       if (directions[event.key]) {
+        callbacksRef.current.onUserInteract?.();
         event.preventDefault();
         goTo(neighbor(state.target >= 0 ? state.target : state.front, directions[event.key]));
       } else if (event.key === 'Enter' && event.target === root) {
+        callbacksRef.current.onUserInteract?.();
         event.preventDefault();
         activate(state.front);
       }

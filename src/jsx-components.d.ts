@@ -46,6 +46,7 @@ declare module '*.jsx' {
     backgroundColor?: string;
     onActiveChange?: (item: InfiniteMenuItem, index: number) => void;
     onItemClick?: (item: InfiniteMenuItem, index: number) => void;
+    onUserInteract?: () => void;
     style?: CSSProperties;
   }
   export interface InfiniteMenuItem {

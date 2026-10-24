@@ -8,6 +8,7 @@ import AdditionalGames, { type AdditionalGameId } from './AdditionalGames';
 
 const STORAGE_KEY = 'drunk-or-drama-session-v1';
 const AGE_KEY = 'drunk-or-drama-adult-confirmed';
+const GAME_PICKER_TUTORIAL_KEY = 'after-hours-game-picker-tutorial-seen-v1';
 
 function readStorage(key: string): string | null {
   try { return window.localStorage.getItem(key); } catch { return null; }
@@ -242,13 +243,24 @@ const GAME_MENU_ITEMS: GameMenuItem[] = [
 ];
 
 function GameLibrary({ onSelect }: { onSelect: (game: GameSelection) => void }) {
+  const [showTutorial, setShowTutorial] = useState(() => readStorage(GAME_PICKER_TUTORIAL_KEY) !== 'yes');
+  const dismissTutorial = () => {
+    setShowTutorial(false);
+    writeStorage(GAME_PICKER_TUTORIAL_KEY, 'yes');
+  };
+
   return <section className="game-library-screen" aria-label="Choose a game">
     <div className="game-library-heading">
       <p className="eyebrow">WELCOME TO AFTER HOURS</p>
       <h1>Pick your <em>game.</em></h1>
-      <p>Drag the cards around, then select a game to play.</p>
+      <p>Choose a game for your group.</p>
     </div>
     <div className="game-library-menu">
+      {showTutorial && <div className="game-picker-tutorial" role="status">
+        <span className="game-picker-tutorial-icon" aria-hidden="true">↔</span>
+        <p><strong>Drag to browse</strong><span>When your game is centered, select it to play.</span></p>
+        <button type="button" aria-label="Dismiss game browsing tip" onClick={dismissTutorial}>×</button>
+      </div>}
       <InfiniteMenu
         items={GAME_MENU_ITEMS}
         count={72}
@@ -265,14 +277,15 @@ function GameLibrary({ onSelect }: { onSelect: (game: GameSelection) => void }) 
         showInfo
         theme="dark"
         accentColor="#a9d2a0"
-        onItemClick={(item) => onSelect(item.id as GameSelection)}
+        onItemClick={(item) => { dismissTutorial(); onSelect(item.id as GameSelection); }}
+        onUserInteract={dismissTutorial}
         renderInfo={(item, _index, moving) => <div className={`game-menu-info${moving ? ' is-moving' : ''}`}>
           <div className="game-menu-copy">
             <span className="game-menu-kicker">GAME {String(GAME_MENU_ITEMS.findIndex((entry) => entry.id === item.id) + 1).padStart(2, '0')} / 05</span>
             <h2>{item.title}</h2>
             <p>{item.description}</p>
           </div>
-          <button className="game-menu-select" type="button" onClick={() => onSelect(item.id as GameSelection)}>Select game <span>↗</span></button>
+          <button className="game-menu-select" type="button" onClick={() => { dismissTutorial(); onSelect(item.id as GameSelection); }}>Select game <span>↗</span></button>
         </div>}
       />
     </div>
